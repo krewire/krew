@@ -148,6 +148,11 @@ func (i *Instance) Run(ctx context.Context, prompt string) (*agent.Response, err
 	return i.underlying.Run(ctx, prompt)
 }
 
+// RunWithHandler executes a single prompt streaming events to a custom turn-specific handler.
+func (i *Instance) RunWithHandler(ctx context.Context, prompt string, h agent.EventHandler) (*agent.Response, error) {
+	return i.underlying.RunWithHandler(ctx, prompt, h)
+}
+
 // Chat continues an existing conversation with a new user message.
 func (i *Instance) Chat(ctx context.Context, message string) (*agent.Response, error) {
 	return i.underlying.Chat(ctx, message)

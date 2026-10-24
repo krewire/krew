@@ -82,23 +82,28 @@ func (s *HTTPServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "keep-alive")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		eventChan := make(chan agent.Event, 20)
-
-		// Create a run-specific agent configured with event channel
-		opts := s.agent
-		_ = opts
+		eventChan := make(chan agent.Event, 32)
 
 		go func() {
 			defer close(eventChan)
-			_, _ = s.agent.Run(r.Context(), req.Prompt)
+			_, _ = s.agent.RunWithHandler(r.Context(), req.Prompt, func(ev agent.Event) {
+				eventChan <- ev
+			})
 		}()
 
-		for ev := range eventChan {
-			b, _ := json.Marshal(ev)
-			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Type, string(b))
-			flusher.Flush()
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case ev, ok := <-eventChan:
+				if !ok {
+					return
+				}
+				b, _ := json.Marshal(ev)
+				_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Type, string(b))
+				flusher.Flush()
+			}
 		}
-		return
 	}
 
 	// 2. Standard synchronous execution

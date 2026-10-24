@@ -65,6 +65,32 @@ func (a *Agent) Run(ctx context.Context, prompt string) (*Response, error) {
 	return a.stepLoop(ctx)
 }
 
+// RunWithHandler executes the agent with an additional per-request event listener.
+func (a *Agent) RunWithHandler(ctx context.Context, prompt string, h EventHandler) (*Response, error) {
+	if h == nil {
+		return a.Run(ctx, prompt)
+	}
+
+	clone := *a
+	orig := a.opts.OnEvent
+	clone.opts.OnEvent = func(e Event) {
+		if orig != nil {
+			orig(e)
+		}
+		h(e)
+	}
+	return clone.Run(ctx, prompt)
+}
+
+// Clone creates a copy of the agent with modified options.
+func (a *Agent) Clone(opts ...Option) *Agent {
+	cp := *a
+	for _, opt := range opts {
+		opt(&cp.opts)
+	}
+	return &cp
+}
+
 // Chat continues an existing conversation with a new user message.
 func (a *Agent) Chat(ctx context.Context, message string) (*Response, error) {
 	return a.Run(ctx, message)

@@ -68,6 +68,30 @@ func TestHTTPServer_Run(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_RunStreamSSE(t *testing.T) {
+	ag := setupTestAgent()
+	srv := transport.NewHTTPServer(ag)
+
+	payload := `{"prompt": "Stream to me", "stream": true}`
+	req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "event: start") {
+		t.Errorf("expected SSE event: start in body, got: %s", body)
+	}
+	if !strings.Contains(body, "event: done") {
+		t.Errorf("expected SSE event: done in body, got: %s", body)
+	}
+}
+
 func TestMCPServer_InitializeAndListTools(t *testing.T) {
 	ag := setupTestAgent()
 
