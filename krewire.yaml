@@ -1,0 +1,8 @@
+project:
+  name: "krew"
+  kind: "cli"
+  version: "0.1.0"
+  description: "Platform-agnostic AI agent engine and runtime for autonomous workflows, coding assistants, and servers"
+
+build:
+  output: "bin"
