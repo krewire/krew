@@ -25,6 +25,10 @@ type Options struct {
 	Approver     Approver
 	OnEvent      EventHandler
 	Streaming    bool // stream LLM tokens as text_delta events
+
+	// Subagent delegation plumbing.
+	SubDepth int    // delegation levels below the root agent (0 = root)
+	ThreadID string // nested thread id (parent_id:child_id) for events
 }
 
 // Option modifies Options.

@@ -101,6 +101,15 @@ func (a *Agent) Memory() memory.Memory {
 	return a.opts.Memory
 }
 
+// RegisterTool adds a tool to the agent's registry.
+func (a *Agent) RegisterTool(t tools.Tool) error {
+	if a == nil || a.opts.Registry == nil {
+		return fmt.Errorf("agent: registry is not available")
+	}
+	a.opts.Registry.Register(t)
+	return nil
+}
+
 // Tools returns the registered tool collection.
 func (a *Agent) Tools() *tools.Registry {
 	return a.opts.Registry

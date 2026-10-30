@@ -24,6 +24,7 @@ const (
 type Event struct {
 	Type      EventType     `json:"type"`
 	Step      int           `json:"step"`
+	ThreadID  string        `json:"thread_id,omitempty"` // nested subagent lineage (parent_id:child_id)
 	Content   string        `json:"content,omitempty"`
 	ToolID    string        `json:"tool_id,omitempty"`
 	ToolName  string        `json:"tool_name,omitempty"`
