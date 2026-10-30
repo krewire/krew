@@ -24,6 +24,7 @@ type Options struct {
 	Temperature  *float64
 	Approver     Approver
 	OnEvent      EventHandler
+	Streaming    bool // stream LLM tokens as text_delta events
 }
 
 // Option modifies Options.
@@ -70,6 +71,12 @@ func WithMaxSteps(steps int) Option {
 // WithTemperature sets the generation temperature.
 func WithTemperature(temp float64) Option {
 	return func(o *Options) { o.Temperature = &temp }
+}
+
+// WithStreaming toggles token-level text_delta streaming via the provider's
+// Stream endpoint when supported.
+func WithStreaming(on bool) Option {
+	return func(o *Options) { o.Streaming = on }
 }
 
 // WithApprover sets an approval callback for sensitive tool executions.

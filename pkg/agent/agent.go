@@ -136,9 +136,8 @@ func (a *Agent) stepLoop(ctx context.Context) (*Response, error) {
 			Tools:       a.opts.Registry.ToAITools(),
 		}
 
-		resp, err := a.opts.Provider.Complete(ctx, req)
+		resp, err := a.complete(ctx, req, step)
 		if err != nil {
-			a.emit(Event{Type: EventError, Step: step, Error: err.Error()})
 			return nil, fmt.Errorf("llm completion error at step %d: %w", step, err)
 		}
 
@@ -158,9 +157,10 @@ func (a *Agent) stepLoop(ctx context.Context) (*Response, error) {
 		if len(resp.ToolCalls) == 0 {
 			a.opts.Memory.Add(ai.AssistantMessage(resp.Content))
 			a.emit(Event{
-				Type:    EventDone,
+				Type:    EventFinish,
 				Step:    step,
 				Content: resp.Content,
+				Usage:   totalUsage,
 			})
 			return &Response{
 				Content:      resp.Content,
@@ -236,4 +236,45 @@ func (a *Agent) stepLoop(ctx context.Context) (*Response, error) {
 	}
 
 	return nil, ErrMaxStepsExceeded
+}
+
+// complete resolves one LLM turn, routing through the provider's streaming
+// endpoint when token-level streaming is enabled so callers observe real-time
+// text_delta events.
+func (a *Agent) complete(ctx context.Context, req ai.CompletionRequest, step int) (*ai.CompletionResponse, error) {
+	if !a.opts.Streaming {
+		resp, err := a.opts.Provider.Complete(ctx, req)
+		if err != nil {
+			a.emit(Event{Type: EventError, Step: step, Error: err.Error()})
+		}
+		return resp, err
+	}
+
+	chunks, err := a.opts.Provider.Stream(ctx, req)
+	if err != nil {
+		a.emit(Event{Type: EventError, Step: step, Error: err.Error()})
+		return nil, err
+	}
+
+	resp := &ai.CompletionResponse{}
+	for chunk := range chunks {
+		if chunk.Error != nil {
+			a.emit(Event{Type: EventError, Step: step, Error: chunk.Error.Error()})
+			return nil, chunk.Error
+		}
+		if chunk.Delta != "" {
+			resp.Content += chunk.Delta
+			a.emit(Event{Type: EventTextDelta, Step: step, Content: chunk.Delta})
+		}
+		if chunk.ToolCall != nil {
+			resp.ToolCalls = append(resp.ToolCalls, *chunk.ToolCall)
+		}
+		if chunk.Done {
+			resp.FinishReason = "stop"
+			if chunk.Usage.TotalTokens > 0 {
+				resp.Usage = chunk.Usage
+			}
+		}
+	}
+	return resp, nil
 }

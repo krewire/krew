@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -69,44 +70,14 @@ func (s *HTTPServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Streaming via SSE
-	if req.Stream {
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		eventChan := make(chan agent.Event, 32)
-
-		go func() {
-			defer close(eventChan)
-			_, _ = s.agent.RunWithHandler(r.Context(), req.Prompt, func(ev agent.Event) {
-				eventChan <- ev
-			})
-		}()
-
-		for {
-			select {
-			case <-r.Context().Done():
-				return
-			case ev, ok := <-eventChan:
-				if !ok {
-					return
-				}
-				b, _ := json.Marshal(ev)
-				_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Type, string(b))
-				flusher.Flush()
-			}
-		}
+	// Streaming is opted in either via the body flag or the standard Accept
+	// negotiation header.
+	if req.Stream || strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+		s.streamRun(w, r, req.Prompt)
+		return
 	}
 
-	// 2. Standard synchronous execution
+	// Standard synchronous execution
 	res, err := s.agent.Run(r.Context(), req.Prompt)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -119,6 +90,59 @@ func (s *HTTPServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(res)
+}
+
+// streamRun executes the agent with token-level streaming enabled and relays
+// every event as a discrete Server-Sent Event.
+func (s *HTTPServer) streamRun(w http.ResponseWriter, r *http.Request, prompt string) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	ctx := r.Context()
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+
+	events := make(chan agent.Event, 32)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(events)
+		defer close(done)
+		_, _ = s.agent.Clone(agent.WithStreaming(true)).RunWithHandler(r.Context(), prompt, func(ev agent.Event) {
+			// Never block the agent loop on a slow or vanished client:
+			// dropping events on context cancellation interrupts the run.
+			select {
+			case events <- ev:
+			case <-ctx.Done():
+			}
+		})
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Client vanished: wait for the producer goroutine to settle.
+			<-done
+			return
+		case ev, ok := <-events:
+			if !ok {
+				return
+			}
+			b, err := json.Marshal(ev)
+			if err != nil {
+				continue
+			}
+			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Type, string(b))
+			flusher.Flush()
+		}
+	}
 }
 
 // MountTo attaches the agent API routes under prefix to an existing http.ServeMux.

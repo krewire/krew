@@ -87,8 +87,8 @@ func TestHTTPServer_RunStreamSSE(t *testing.T) {
 	if !strings.Contains(body, "event: start") {
 		t.Errorf("expected SSE event: start in body, got: %s", body)
 	}
-	if !strings.Contains(body, "event: done") {
-		t.Errorf("expected SSE event: done in body, got: %s", body)
+	if !strings.Contains(body, "event: finish") {
+		t.Errorf("expected SSE event: finish in body, got: %s", body)
 	}
 }
 
