@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,8 +16,10 @@ import (
 	"github.com/krewire/krew"
 	"github.com/krewire/krew/pkg/agent"
 	"github.com/krewire/krew/pkg/embed"
+	"github.com/krewire/krew/pkg/memory"
 	"github.com/krewire/krew/pkg/persona"
 	"github.com/krewire/krew/pkg/transport"
+	"github.com/krewire/krewire/pkg/ai"
 )
 
 const banner = `
@@ -47,6 +50,10 @@ func main() {
 		runServe(args)
 	case "mcp":
 		runMCP(args)
+	case "sessions":
+		runSessions(args)
+	case "export":
+		runExport(args)
 	case "version", "-v", "--version":
 		fmt.Printf("krew %s\n", krew.Version)
 	case "help", "-h", "--help":
@@ -69,10 +76,20 @@ COMMANDS:
   run      Execute a single prompt or automated task to completion headless
   serve    Launch HTTP/REST and Server-Sent Events (SSE) server for remote hosting
   mcp      Start Model Context Protocol (stdio) server for IDE integration
+  sessions List past conversation sessions with message and token counts
+  export   Export conversation session transcript to markdown
   version  Print version information
   help     Show this help screen
 
-OPTIONS (chat & run):
+OPTIONS (chat):
+  --resume=<id>                             Resume past conversation session by ID
+  --sessions-dir=<path>                     Custom sessions directory (default: ~/.krew/sessions)
+  --persona=<coding|devops|worker|general>  Agent persona (default: coding)
+  --workspace=<path>                        Working directory root (default: .)
+  --model=<name>                            Target model name override
+  --max-steps=<n>                           Maximum reasoning loop turns (default: 25)
+
+OPTIONS (run):
   --persona=<coding|devops|worker|general>  Agent persona (default: coding)
   --workspace=<path>                        Working directory root (default: .)
   --model=<name>                            Target model name override
@@ -82,6 +99,10 @@ OPTIONS (serve):
   --port=<port>                             Port to bind (default: 8080)
   --host=<host>                             Host address to bind (default: 0.0.0.0)
   --persona=<name>                          Default persona (default: coding)
+
+OPTIONS (sessions & export):
+  --dir=<path>                              Sessions directory override (default: ~/.krew/sessions)
+  --format=<markdown>                       Export format for 'export' (default: markdown)
 
 ENVIRONMENT:
   GEMINI_API_KEY      Google Gemini API token
@@ -106,13 +127,60 @@ func parsePersona(name string) persona.Persona {
 	}
 }
 
+func replaySession(w io.Writer, msgs []ai.Message) {
+	for _, msg := range msgs {
+		switch msg.Role {
+		case ai.RoleUser:
+			fmt.Fprintf(w, "\033[1;32myou>\033[0m %s\n\n", msg.Content)
+		case ai.RoleAssistant:
+			for _, tc := range msg.ToolCalls {
+				fmt.Fprintf(w, "\033[1;33m⚙  Tool Call:\033[0m %s(%s)\n", tc.Name, tc.Arguments)
+			}
+			if msg.Content != "" {
+				fmt.Fprintf(w, "\033[1;34m[krew]\033[0m %s\n\n", msg.Content)
+			}
+		case ai.RoleTool:
+			preview := msg.Content
+			if len(preview) > 120 {
+				preview = preview[:120] + "... (truncated)"
+			}
+			preview = strings.ReplaceAll(preview, "\n", " ")
+			fmt.Fprintf(w, "\033[1;32m✔  Result:\033[0m %s\n\n", preview)
+		}
+	}
+}
+
+func printSessionList(w io.Writer, sessions []memory.SessionInfo) {
+	fmt.Fprintln(w, "Saved Sessions:")
+	for _, s := range sessions {
+		fmt.Fprintf(w, "  • %-36s  %s  (%d msgs, %d tokens)\n",
+			s.ID,
+			s.ModTime.Format("2006-01-02 15:04:05"),
+			s.Messages,
+			s.Tokens,
+		)
+	}
+}
+
 func runChat(args []string) {
 	fs := flag.NewFlagSet("chat", flag.ExitOnError)
 	personaFlag := fs.String("persona", "coding", "Agent persona")
 	workspaceFlag := fs.String("workspace", ".", "Workspace directory")
 	modelFlag := fs.String("model", "", "Model override")
 	maxStepsFlag := fs.Int("max-steps", 25, "Maximum steps per prompt")
+	resumeFlag := fs.String("resume", "", "Resume saved session ID")
+	sessionsDirFlag := fs.String("sessions-dir", "", "Custom sessions directory")
 	_ = fs.Parse(args)
+
+	sessDir := *sessionsDirFlag
+	if sessDir == "" {
+		var err error
+		sessDir, err = memory.DefaultSessionsDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error locating sessions directory: %v\n", err)
+			os.Exit(1)
+		}
+	}
 
 	pers := parsePersona(*personaFlag)
 
@@ -128,9 +196,33 @@ func runChat(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("\033[1;36m[Krew Agent]\033[0m Initialized persona \033[1m%s\033[0m in workspace \033[1m%s\033[0m\n", pers.Name, *workspaceFlag)
-	fmt.Println("Type your instruction or message. Press Ctrl+C or type 'exit' to quit.")
-	fmt.Println()
+	var sessLog *memory.SessionLog
+	var activeSessionID string
+
+	if *resumeFlag != "" {
+		history, err := memory.LoadSession(sessDir, *resumeFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading session %q: %v\n", *resumeFlag, err)
+			os.Exit(1)
+		}
+		inst.Memory().Add(history...)
+
+		log, err := memory.OpenSessionLog(sessDir, *resumeFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening session log %q: %v\n", *resumeFlag, err)
+			os.Exit(1)
+		}
+		sessLog = log
+		activeSessionID = *resumeFlag
+		defer sessLog.Close()
+
+		fmt.Printf("\033[1;36m[Krew Agent]\033[0m Resumed session \033[1m%s\033[0m (%d messages)\n\n", *resumeFlag, len(history))
+		replaySession(os.Stdout, history)
+	} else {
+		fmt.Printf("\033[1;36m[Krew Agent]\033[0m Initialized persona \033[1m%s\033[0m in workspace \033[1m%s\033[0m\n", pers.Name, *workspaceFlag)
+		fmt.Println("Type your instruction or message. Press Ctrl+C or type 'exit' to quit.")
+		fmt.Println()
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 	ctx := context.Background()
@@ -149,6 +241,22 @@ func runChat(args []string) {
 			break
 		}
 
+		if sessLog == nil {
+			log, id, err := memory.StartSession(sessDir, line)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to start session log: %v\n", err)
+			} else {
+				sessLog = log
+				activeSessionID = id
+				defer sessLog.Close()
+				fmt.Printf("\033[2m[Session saved: %s]\033[0m\n\n", activeSessionID)
+			}
+		}
+
+		if sessLog != nil {
+			_ = sessLog.Append(ai.UserMessage(line))
+		}
+
 		fmt.Println()
 		res, err := inst.Chat(ctx, line)
 		if err != nil {
@@ -156,8 +264,78 @@ func runChat(args []string) {
 			continue
 		}
 
+		if sessLog != nil {
+			_ = sessLog.Append(ai.AssistantMessage(res.Content))
+		}
+
 		fmt.Printf("\n\033[1;34m[krew]\033[0m %s\n\n", res.Content)
 	}
+}
+
+func runSessions(args []string) {
+	fs := flag.NewFlagSet("sessions", flag.ExitOnError)
+	dirFlag := fs.String("dir", "", "Custom sessions directory")
+	_ = fs.Parse(args)
+
+	sessDir := *dirFlag
+	if sessDir == "" {
+		var err error
+		sessDir, err = memory.DefaultSessionsDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error locating sessions directory: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	sessions, err := memory.ListSessions(sessDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error listing sessions: %v\n", err)
+		os.Exit(1)
+	}
+
+	if len(sessions) == 0 {
+		fmt.Println("No recorded sessions found.")
+		return
+	}
+
+	printSessionList(os.Stdout, sessions)
+}
+
+func runExport(args []string) {
+	fs := flag.NewFlagSet("export", flag.ExitOnError)
+	formatFlag := fs.String("format", "markdown", "Export format (default: markdown)")
+	dirFlag := fs.String("dir", "", "Custom sessions directory")
+	_ = fs.Parse(args)
+
+	remaining := fs.Args()
+	if len(remaining) == 0 {
+		fmt.Fprintln(os.Stderr, "error: session ID required for 'krew export'")
+		os.Exit(2)
+	}
+	sessionID := remaining[0]
+
+	sessDir := *dirFlag
+	if sessDir == "" {
+		var err error
+		sessDir, err = memory.DefaultSessionsDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error locating sessions directory: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if *formatFlag != "markdown" && *formatFlag != "md" {
+		fmt.Fprintf(os.Stderr, "unsupported export format %q (supported: markdown)\n", *formatFlag)
+		os.Exit(2)
+	}
+
+	rendered, err := memory.RenderTranscriptMarkdown(sessDir, sessionID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error exporting session %s: %v\n", sessionID, err)
+		os.Exit(1)
+	}
+
+	fmt.Print(rendered)
 }
 
 func runSingleShot(args []string) {

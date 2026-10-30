@@ -183,3 +183,67 @@ func sessionFilePath(dir, sessionID string) (string, error) {
 	}
 	return filepath.Join(dir, sessionID+".jsonl"), nil
 }
+
+// sessionNamePattern matches the slug summary derived from a user prompt.
+var sessionNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+
+// dashRun collapses runs of separator characters emitted while slugging a
+// user prompt into a session name.
+var dashRun = regexp.MustCompile(`-{2,}`)
+
+// maxSessionNameLen bounds auto-derived session names derived from prompts.
+const maxSessionNameLen = 48
+
+// SessionName derives a filesystem-safe transcript name from the first user
+// prompt: lowercased slug words joined with dashes, capped in length.
+func SessionName(prompt string) string {
+	clean := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
+		default:
+			return '-'
+		}
+	}, prompt)
+	clean = dashRun.ReplaceAllString(clean, "-")
+	clean = strings.Trim(clean, "-")
+	if clean == "" {
+		return "session"
+	}
+	if len(clean) > maxSessionNameLen {
+		if cut := strings.LastIndex(clean[:maxSessionNameLen], "-"); cut > 0 {
+			clean = clean[:cut]
+		} else {
+			clean = clean[:maxSessionNameLen]
+		}
+		clean = strings.Trim(clean, "-")
+	}
+	if !sessionNamePattern.MatchString(clean) {
+		return "session"
+	}
+	return clean
+}
+
+// StartSession derives a unique transcript name from the first user prompt
+// (slug summary with -2, -3… suffixes on collision) and opens its log. The
+// caller must Close the returned log.
+func StartSession(dir, prompt string) (*SessionLog, string, error) {
+	base := SessionName(prompt)
+	name := base
+	for n := 2; ; n++ {
+		if _, err := os.Stat(filepath.Join(dir, name+".jsonl")); err != nil && !os.IsNotExist(err) {
+			return nil, "", fmt.Errorf("probe session file: %w", err)
+		} else if err == nil {
+			name = fmt.Sprintf("%s-%d", base, n)
+			continue
+		}
+		break
+	}
+	log, err := OpenSessionLog(dir, name)
+	if err != nil {
+		return nil, "", err
+	}
+	return log, name, nil
+}
