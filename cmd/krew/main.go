@@ -99,6 +99,7 @@ OPTIONS (serve):
   --port=<port>                             Port to bind (default: 8080)
   --host=<host>                             Host address to bind (default: 0.0.0.0)
   --persona=<name>                          Default persona (default: coding)
+  --no-auth                                 Disable authentication for local loopback development
 
 OPTIONS (sessions & export):
   --dir=<path>                              Sessions directory override (default: ~/.krew/sessions)
@@ -385,6 +386,7 @@ func runServe(args []string) {
 	hostFlag := fs.String("host", "0.0.0.0", "Host address to listen on")
 	personaFlag := fs.String("persona", "coding", "Default agent persona")
 	workspaceFlag := fs.String("workspace", ".", "Workspace directory")
+	noAuthFlag := fs.Bool("no-auth", false, "Disable authentication for local loopback development")
 	_ = fs.Parse(args)
 
 	pers := parsePersona(*personaFlag)
@@ -398,7 +400,7 @@ func runServe(args []string) {
 		os.Exit(1)
 	}
 
-	server := transport.NewHTTPServer(inst.Agent())
+	server := transport.NewHTTPServer(inst.Agent(), transport.WithNoAuth(*noAuthFlag))
 	addr := fmt.Sprintf("%s:%d", *hostFlag, *portFlag)
 
 	httpServer := &http.Server{

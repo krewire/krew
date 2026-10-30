@@ -10,11 +10,19 @@ import (
 	"strings"
 )
 
-// SafePath ensures the path resolves within root unless root is empty.
+// ErrPathEscape is returned when a path traversal escape attempt is detected.
+var ErrPathEscape = errors.New("security error: path traversal escape detected")
+
+// SafePath ensures the path resolves within root without directory traversal.
 func SafePath(root, rel string) (string, error) {
 	if root == "" {
 		return filepath.Clean(rel), nil
 	}
+	cleanRel := filepath.Clean(rel)
+	if cleanRel == ".." || strings.HasPrefix(cleanRel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("%w: path %q attempts traversal outside sandbox", ErrPathEscape, rel)
+	}
+
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		return "", err
@@ -26,10 +34,15 @@ func SafePath(root, rel string) (string, error) {
 		target = filepath.Clean(target)
 	}
 
-	if !strings.HasPrefix(target, absRoot) {
-		return "", fmt.Errorf("security error: path %q outside sandbox %q", rel, root)
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return "", err
 	}
-	return target, nil
+
+	if absTarget != absRoot && !strings.HasPrefix(absTarget, absRoot+string(filepath.Separator)) {
+		return "", fmt.Errorf("%w: path %q outside sandbox %q", ErrPathEscape, rel, root)
+	}
+	return absTarget, nil
 }
 
 // --- ReadFileTool ---
