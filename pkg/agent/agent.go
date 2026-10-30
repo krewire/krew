@@ -209,6 +209,9 @@ func (a *Agent) stepLoop(ctx context.Context) (*Response, error) {
 					ToolName: call.Name,
 					Error:    deniedMsg,
 				})
+				if a.opts.StrictApprovals {
+					return nil, fmt.Errorf("%w: tool %s execution denied", ErrPermissionDenied, call.Name)
+				}
 				continue
 			}
 

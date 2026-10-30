@@ -14,17 +14,18 @@ type Approver func(toolName string, args json.RawMessage) bool
 
 // Options configures an Agent instance.
 type Options struct {
-	Provider     ai.Provider
-	Model        string
-	SystemPrompt string
-	Persona      persona.Persona
-	Registry     *tools.Registry
-	Memory       memory.Memory
-	MaxSteps     int
-	Temperature  *float64
-	Approver     Approver
-	OnEvent      EventHandler
-	Streaming    bool // stream LLM tokens as text_delta events
+	Provider        ai.Provider
+	Model           string
+	SystemPrompt    string
+	Persona         persona.Persona
+	Registry        *tools.Registry
+	Memory          memory.Memory
+	MaxSteps        int
+	Temperature     *float64
+	Approver        Approver
+	StrictApprovals bool // abort loop and return ErrPermissionDenied if approver rejects
+	OnEvent         EventHandler
+	Streaming       bool // stream LLM tokens as text_delta events
 
 	// Subagent delegation plumbing.
 	SubDepth int    // delegation levels below the root agent (0 = root)
@@ -86,6 +87,11 @@ func WithStreaming(on bool) Option {
 // WithApprover sets an approval callback for sensitive tool executions.
 func WithApprover(appr Approver) Option {
 	return func(o *Options) { o.Approver = appr }
+}
+
+// WithStrictApprovals controls whether tool denials abort execution with ErrPermissionDenied.
+func WithStrictApprovals(strict bool) Option {
+	return func(o *Options) { o.StrictApprovals = strict }
 }
 
 // WithEventHandler registers a streaming event listener.
