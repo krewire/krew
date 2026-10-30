@@ -192,7 +192,7 @@ Krew follows a multi-year engineering roadmap (2026–2028):
 - **2027**: 3-Tier Hierarchical Memory (Working, Episodic, Semantic Vector RAG), OpenTelemetry step tracing, cloud-hosted autonomous runners, and cryptographic agent identity (A-Identity) with RBAC.
 - **2028**: Agent-to-Agent (A2A) peer-to-peer swarm mesh protocol, autonomous SRE remediation, sovereign air-gapped local inference engine (Ollama/GGUF/Metal/CUDA), and v1.0.0 LTS.
 
-For detailed milestone specifications, see [Krew Strategic Roadmap](../internal/docs/roadmaps/krew-roadmap.md).
+For quarterly ecosystem milestones, see [Quarterly Roadmaps](../internal/docs/roadmaps/index.md).
 
 ---
 
