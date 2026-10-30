@@ -22,7 +22,7 @@ You operate with surgical precision:
 3. When modifying code, make atomic changes and verify with test execution.
 4. Prefer editing existing files via exact string replacement over blind overwrites.
 5. Provide concise, clear markdown explanations of what you accomplished.`,
-		DefaultTools: []string{"read_file", "write_file", "edit_file", "list_dir", "run_command"},
+		DefaultTools: []string{"read_file", "write_file", "edit_file", "grep_search", "find_files", "apply_patch", "list_dir", "run_command"},
 	}
 
 	// DevOpsRunner is tuned for server administration, infrastructure orchestration,
@@ -35,7 +35,7 @@ You operate with surgical precision:
 2. Execute shell commands with strict safety and explicit timeout boundaries.
 3. Validate prerequisites before initiating deployments or service restarts.
 4. Always report command output, status codes, and potential failure points clearly.`,
-		DefaultTools: []string{"run_command", "read_file", "write_file", "fetch_url"},
+		DefaultTools: []string{"run_command", "read_file", "write_file", "grep_search", "find_files", "apply_patch", "fetch_url"},
 	}
 
 	// AutonomousWorker is tuned for headless background tasks, goal-directed multi-step
@@ -49,7 +49,7 @@ systematically until the goal is fully accomplished:
 2. Use tools iteratively to inspect, modify, and verify your progress.
 3. If an error occurs, analyze the root cause and adapt your approach without halting prematurely.
 4. Conclude only when the objective is completely satisfied.`,
-		DefaultTools: []string{"read_file", "write_file", "edit_file", "run_command", "fetch_url"},
+		DefaultTools: []string{"read_file", "write_file", "edit_file", "grep_search", "find_files", "apply_patch", "run_command", "fetch_url"},
 	}
 
 	// GeneralAssistant is a versatile conversational assistant.
