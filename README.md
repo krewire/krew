@@ -188,7 +188,7 @@ Krew uses `github.com/krewire/krewire/pkg/ai` as its unified inference provider 
 ## 7. Strategic Roadmap
 
 Krew follows a multi-year engineering roadmap (2026–2028):
-- **2026**: Core ReAct Engine, Multi-Protocol Transports (Embed, CLI, SSE Daemon, MCP), Sandboxed Tools, and in-CLI companion (`kiw krew`). *(Delivered)*
+- **2026**: Core ReAct Engine, Multi-Protocol Transports (Embed, CLI, SSE Daemon, MCP), Sandboxed Tools, and standalone CLI (`krew`). *(Delivered)*
 - **2027**: 3-Tier Hierarchical Memory (Working, Episodic, Semantic Vector RAG), OpenTelemetry step tracing, cloud-hosted autonomous runners, and cryptographic agent identity (A-Identity) with RBAC.
 - **2028**: Agent-to-Agent (A2A) peer-to-peer swarm mesh protocol, autonomous SRE remediation, sovereign air-gapped local inference engine (Ollama/GGUF/Metal/CUDA), and v1.0.0 LTS.
 
