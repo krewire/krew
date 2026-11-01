@@ -106,7 +106,7 @@ func New(opts Options) (*Instance, error) {
 
 	mem := opts.Memory
 	if mem == nil {
-		mem = memory.NewBuffer(sysPrompt, 40)
+		mem = memory.NewTokenBuffer(sysPrompt)
 	}
 
 	agentOpts := []agent.Option{

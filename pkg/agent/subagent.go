@@ -198,7 +198,7 @@ func withPersonaResolved(key string) Option {
 
 func withFreshMemory() Option {
 	return func(o *Options) {
-		o.Memory = memory.NewBuffer(o.SystemPrompt, 100)
+		o.Memory = memory.NewTokenBuffer(o.SystemPrompt)
 	}
 }
 

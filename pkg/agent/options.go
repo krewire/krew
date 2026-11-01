@@ -27,6 +27,9 @@ type Options struct {
 	OnEvent         EventHandler
 	Streaming       bool // stream LLM tokens as text_delta events
 
+	// MaxToolResultTokens limits the estimated token count of individual tool output turns.
+	MaxToolResultTokens int
+
 	// Subagent delegation plumbing.
 	SubDepth int    // delegation levels below the root agent (0 = root)
 	ThreadID string // nested thread id (parent_id:child_id) for events
@@ -97,4 +100,9 @@ func WithStrictApprovals(strict bool) Option {
 // WithEventHandler registers a streaming event listener.
 func WithEventHandler(h EventHandler) Option {
 	return func(o *Options) { o.OnEvent = h }
+}
+
+// WithMaxToolResultTokens bounds the estimated token count of each tool result payload.
+func WithMaxToolResultTokens(tokens int) Option {
+	return func(o *Options) { o.MaxToolResultTokens = tokens }
 }

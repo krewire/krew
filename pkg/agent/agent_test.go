@@ -3,8 +3,11 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/krewire/krew/pkg/memory"
 	"github.com/krewire/krew/pkg/tools"
 	"github.com/krewire/krewire/pkg/ai"
 )
@@ -161,4 +164,112 @@ func TestAgent_ApprovalGate(t *testing.T) {
 	if resp.Content != "Action was rejected as expected." {
 		t.Errorf("unexpected content: %s", resp.Content)
 	}
+}
+
+func TestAgent_TokenBufferDefaultAndCompaction(t *testing.T) {
+	mock := &multiStepMock{
+		responses: []*ai.CompletionResponse{
+			{Content: "turn response", FinishReason: "stop"},
+		},
+	}
+
+	ag, err := New(WithProvider(mock))
+	if err != nil {
+		t.Fatalf("agent.New failed: %v", err)
+	}
+
+	// 1. Check default memory backend is TokenBuffer
+	tb, ok := ag.Memory().(*memory.TokenBuffer)
+	if !ok || tb == nil {
+		t.Fatalf("expected default Memory to be *memory.TokenBuffer, got %T", ag.Memory())
+	}
+
+	// 2. Verify compaction bounds context
+	smallBuffer := memory.NewTokenBuffer("system", memory.WithMaxTokens(50), memory.WithKeepTurns(2))
+	agCompact, err := New(WithProvider(mock), WithMemory(smallBuffer))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add several large messages
+	for i := 0; i < 10; i++ {
+		smallBuffer.Add(ai.UserMessage(fmt.Sprintf("very long message turn %d with lots of words and padding text here", i)))
+		smallBuffer.Add(ai.AssistantMessage(fmt.Sprintf("assistant long response turn %d with lots of words and text", i)))
+	}
+
+	// Confirm messages are compacted and within bound
+	msgs := agCompact.Memory().Messages()
+	if len(msgs) > 6 {
+		t.Errorf("expected compaction to reduce message count, got %d", len(msgs))
+	}
+}
+
+func TestAgent_ToolResultTruncation(t *testing.T) {
+	hugeToolOutput := strings.Repeat("huge output line\n", 5000)
+
+	reg := tools.NewRegistry()
+	reg.Register(&mockHugeTool{output: hugeToolOutput})
+
+	mock := &multiStepMock{
+		responses: []*ai.CompletionResponse{
+			{
+				ToolCalls: []ai.ToolCall{
+					{
+						ID:        "call_huge",
+						Name:      "huge_tool",
+						Arguments: `{}`,
+					},
+				},
+			},
+			{
+				Content:      "Processed huge tool output",
+				FinishReason: "stop",
+			},
+		},
+	}
+
+	ag, err := New(
+		WithProvider(mock),
+		WithTools(reg),
+		WithMaxToolResultTokens(100), // restrict to 100 tokens (~400 runes)
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ag.Run(context.Background(), "Run huge tool")
+	if err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
+
+	msgs := ag.Memory().Messages()
+	var toolMsg *ai.Message
+	for _, m := range msgs {
+		if m.Role == ai.RoleTool {
+			toolMsg = &m
+			break
+		}
+	}
+	if toolMsg == nil {
+		t.Fatal("expected tool message in memory")
+	}
+	if !strings.Contains(toolMsg.Content, "[tool output truncated: exceeded token limit]") {
+		t.Errorf("expected truncated tool message, got length %d", len(toolMsg.Content))
+	}
+	if len(toolMsg.Content) > 1000 {
+		t.Errorf("expected tool message length <= 1000, got %d", len(toolMsg.Content))
+	}
+}
+
+type mockHugeTool struct {
+	output string
+}
+
+func (m *mockHugeTool) Name() string        { return "huge_tool" }
+func (m *mockHugeTool) Description() string { return "returns huge output" }
+func (m *mockHugeTool) Parameters() map[string]any {
+	return map[string]any{"type": "object"}
+}
+func (m *mockHugeTool) Execute(ctx context.Context, args json.RawMessage) (any, error) {
+	return m.output, nil
 }

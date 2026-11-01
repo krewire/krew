@@ -23,12 +23,16 @@ type Agent struct {
 	opts Options
 }
 
+// DefaultMaxToolResultTokens limits tool response sizes to avoid context explosion.
+const DefaultMaxToolResultTokens = 8_000
+
 // New constructs an initialized Agent.
 func New(opts ...Option) (*Agent, error) {
 	cfg := Options{
-		Persona:  persona.CodingAssistant,
-		MaxSteps: 25,
-		Registry: tools.NewRegistry(),
+		Persona:             persona.CodingAssistant,
+		MaxSteps:            25,
+		Registry:            tools.NewRegistry(),
+		MaxToolResultTokens: DefaultMaxToolResultTokens,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -44,7 +48,10 @@ func New(opts ...Option) (*Agent, error) {
 		cfg.SystemPrompt = cfg.Persona.Instructions
 	}
 	if cfg.Memory == nil {
-		cfg.Memory = memory.NewBuffer(cfg.SystemPrompt, 100)
+		cfg.Memory = memory.NewTokenBuffer(cfg.SystemPrompt)
+	}
+	if cfg.MaxToolResultTokens <= 0 {
+		cfg.MaxToolResultTokens = DefaultMaxToolResultTokens
 	}
 
 	return &Agent{opts: cfg}, nil
@@ -241,6 +248,14 @@ func (a *Agent) stepLoop(ctx context.Context) (*Response, error) {
 					ToolName: call.Name,
 					Result:   result,
 				})
+			}
+
+			if a.opts.MaxToolResultTokens > 0 && memory.EstimateTokens(resPayload) > a.opts.MaxToolResultTokens {
+				maxRunes := a.opts.MaxToolResultTokens * 4
+				runes := []rune(resPayload)
+				if len(runes) > maxRunes {
+					resPayload = string(runes[:maxRunes]) + "\n... [tool output truncated: exceeded token limit]"
+				}
 			}
 
 			a.opts.Memory.Add(ai.ToolMessage(call.ID, resPayload))
