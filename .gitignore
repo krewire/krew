@@ -1,18 +1,27 @@
-# Binaries
+# Binaries and build output
 bin/
+dist/
+.krewire/
 *.exe
-*.exe~
 *.dll
 *.so
 *.dylib
 
-# Test and coverage artifacts
+# Test artifacts
 *.test
 *.out
 coverage.html
+coverage.txt
 
-# Local environment & cache
-.env
-.env.*.local
-.krewire/
+# IDE & OS
 .DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
