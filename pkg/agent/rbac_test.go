@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/krewire/auth/pkg/audit"
-	"github.com/krewire/auth/pkg/rbac"
 	"github.com/krewire/krew/pkg/agent"
 	"github.com/krewire/krew/pkg/tools"
 	"github.com/krewire/krewire/pkg/ai"
@@ -34,8 +32,8 @@ func (m *rbacMockProvider) Stream(_ context.Context, _ ai.CompletionRequest) (<-
 }
 
 func TestAgent_RBAC_ViewerDeniedRunCommand(t *testing.T) {
-	eval := rbac.NewEvaluator()
-	ledger := audit.NewMemoryLedger()
+	eval := agent.NewMemoryAuthorizer()
+	ledger := agent.NewMemoryAuditor()
 
 	approver := agent.NewAgentApprover(eval, []string{"viewer"}, "tenant_test", "user_viewer", ledger)
 
@@ -72,13 +70,7 @@ func TestAgent_RBAC_ViewerDeniedRunCommand(t *testing.T) {
 	}
 
 	// Verify audit ledger captured the violation
-	events, err := ledger.Query(context.Background(), audit.Filter{
-		TenantID: "tenant_test",
-		Action:   "agent.tool_denied",
-	})
-	if err != nil {
-		t.Fatalf("ledger query failed: %v", err)
-	}
+	events := ledger.Query(context.Background(), "tenant_test", "agent.tool_denied")
 	if len(events) != 1 {
 		t.Fatalf("expected 1 audit event, got %d", len(events))
 	}
@@ -93,8 +85,8 @@ func TestAgent_RBAC_ViewerDeniedRunCommand(t *testing.T) {
 func TestAgent_RBAC_DeveloperAllowedFileTools(t *testing.T) {
 	tmp := t.TempDir()
 	reg := tools.DefaultWorkspaceTools(tmp)
-	eval := rbac.NewEvaluator()
-	ledger := audit.NewMemoryLedger()
+	eval := agent.NewMemoryAuthorizer()
+	ledger := agent.NewMemoryAuditor()
 
 	approver := agent.NewAgentApprover(eval, []string{"developer"}, "tenant_test", "user_dev", ledger)
 
@@ -146,7 +138,7 @@ func TestAgent_RBAC_DeveloperAllowedFileTools(t *testing.T) {
 	}
 
 	// Verify no permission denials were logged
-	events, _ := ledger.Query(context.Background(), audit.Filter{})
+	events := ledger.Query(context.Background(), "", "")
 	if len(events) != 0 {
 		t.Errorf("expected 0 denial events for developer, got %d", len(events))
 	}

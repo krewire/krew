@@ -12,9 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/krewire/auth/pkg/audit"
-	"github.com/krewire/auth/pkg/identity"
-	"github.com/krewire/auth/pkg/rbac"
 	"github.com/krewire/krew/pkg/agent"
 	"github.com/krewire/krew/pkg/tools"
 )
@@ -26,6 +23,19 @@ const (
 	userContextKey    contextKey = "krewire_user_id"
 	sessionContextKey contextKey = "krewire_session"
 )
+
+// Session represents an authenticated user/tenant session.
+type Session struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	TenantID  string    `json:"tenant_id"`
+	Roles     []string  `json:"roles"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (s *Session) IsExpired() bool {
+	return !s.ExpiresAt.IsZero() && time.Now().After(s.ExpiresAt)
+}
 
 // TenantFromContext extracts the active TenantID from request context.
 func TenantFromContext(ctx context.Context) string {
@@ -44,24 +54,29 @@ func UserFromContext(ctx context.Context) string {
 }
 
 // SessionFromContext extracts the authenticated Session from request context.
-func SessionFromContext(ctx context.Context) *identity.Session {
-	if s, ok := ctx.Value(sessionContextKey).(*identity.Session); ok {
+func SessionFromContext(ctx context.Context) *Session {
+	if s, ok := ctx.Value(sessionContextKey).(*Session); ok {
 		return s
 	}
 	return nil
 }
 
-// TokenVerifier verifies bearer tokens and returns the associated identity.Session.
+// TokenVerifier verifies bearer tokens and returns the associated Session.
 type TokenVerifier interface {
-	VerifyToken(ctx context.Context, token string) (*identity.Session, error)
+	VerifyToken(ctx context.Context, token string) (*Session, error)
 }
 
-// SessionStoreVerifier adapts an identity.SessionStore to the TokenVerifier interface.
+// SessionStore provides retrieval of Sessions by token.
+type SessionStore interface {
+	Get(ctx context.Context, token string) (*Session, error)
+}
+
+// SessionStoreVerifier adapts a SessionStore to the TokenVerifier interface.
 type SessionStoreVerifier struct {
-	Store identity.SessionStore
+	Store SessionStore
 }
 
-func (v *SessionStoreVerifier) VerifyToken(ctx context.Context, token string) (*identity.Session, error) {
+func (v *SessionStoreVerifier) VerifyToken(ctx context.Context, token string) (*Session, error) {
 	if v.Store == nil {
 		return nil, errors.New("no session store configured")
 	}
@@ -85,8 +100,8 @@ type HTTPServer struct {
 	verifier       TokenVerifier
 	noAuth         bool
 	tenantBaseDir  string
-	evaluator      *rbac.Evaluator
-	auditLedger    audit.AuditLogger
+	authorizer     agent.Authorizer
+	auditLogger    agent.Auditor
 	allowedOrigins []string
 	maxBodySize    int64
 	mu             sync.RWMutex
@@ -114,8 +129,8 @@ func WithVerifier(v TokenVerifier) ServerOption {
 	return func(s *HTTPServer) { s.verifier = v }
 }
 
-// WithSessionStore configures identity.SessionStore for Bearer authentication.
-func WithSessionStore(store identity.SessionStore) ServerOption {
+// WithSessionStore configures SessionStore for Bearer authentication.
+func WithSessionStore(store SessionStore) ServerOption {
 	return func(s *HTTPServer) { s.verifier = &SessionStoreVerifier{Store: store} }
 }
 
@@ -130,10 +145,10 @@ func WithTenantBaseDir(dir string) ServerOption {
 }
 
 // WithRBAC enables role-based tool gating and audit logging.
-func WithRBAC(eval *rbac.Evaluator, auditLedger audit.AuditLogger) ServerOption {
+func WithRBAC(auth agent.Authorizer, auditLedger agent.Auditor) ServerOption {
 	return func(s *HTTPServer) {
-		s.evaluator = eval
-		s.auditLedger = auditLedger
+		s.authorizer = auth
+		s.auditLogger = auditLedger
 	}
 }
 
@@ -177,7 +192,7 @@ type RunRequest struct {
 	Stream bool   `json:"stream"`
 }
 
-func (s *HTTPServer) authenticate(r *http.Request) (context.Context, *identity.Session, error) {
+func (s *HTTPServer) authenticate(r *http.Request) (context.Context, *Session, error) {
 	if s.noAuth {
 		return r.Context(), nil, nil
 	}
@@ -204,7 +219,7 @@ func (s *HTTPServer) authenticate(r *http.Request) (context.Context, *identity.S
 	return ctx, sess, nil
 }
 
-func (s *HTTPServer) scopedAgent(sess *identity.Session) *agent.Agent {
+func (s *HTTPServer) scopedAgent(sess *Session) *agent.Agent {
 	if sess == nil || sess.TenantID == "" || s.tenantBaseDir == "" {
 		return s.agent
 	}
@@ -214,8 +229,8 @@ func (s *HTTPServer) scopedAgent(sess *identity.Session) *agent.Agent {
 	tenantTools := tools.DefaultWorkspaceTools(tenantWorkspace)
 	opts := []agent.Option{agent.WithTools(tenantTools)}
 
-	if s.evaluator != nil {
-		approver := agent.NewAgentApprover(s.evaluator, sess.Roles, sess.TenantID, sess.UserID, s.auditLedger)
+	if s.authorizer != nil {
+		approver := agent.NewAgentApprover(s.authorizer, sess.Roles, sess.TenantID, sess.UserID, s.auditLogger)
 		opts = append(opts, agent.WithApprover(approver), agent.WithStrictApprovals(true))
 	}
 	return s.agent.Clone(opts...)
@@ -336,8 +351,6 @@ func (s *HTTPServer) streamRun(w http.ResponseWriter, r *http.Request, execAgent
 		defer close(events)
 		defer close(done)
 		_, _ = execAgent.Clone(agent.WithStreaming(true)).RunWithHandler(ctx, prompt, func(ev agent.Event) {
-			// Never block the agent loop on a slow or vanished client:
-			// dropping events on context cancellation interrupts the run.
 			select {
 			case events <- ev:
 			case <-ctx.Done():
@@ -348,7 +361,6 @@ func (s *HTTPServer) streamRun(w http.ResponseWriter, r *http.Request, execAgent
 	for {
 		select {
 		case <-ctx.Done():
-			// Client vanished: wait for the producer goroutine to settle.
 			<-done
 			return
 		case ev, ok := <-events:

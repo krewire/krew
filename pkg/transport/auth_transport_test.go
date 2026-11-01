@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/krewire/auth/pkg/identity"
-	"github.com/krewire/auth/pkg/rbac"
 	"github.com/krewire/krew/pkg/agent"
 	"github.com/krewire/krew/pkg/tools"
 	"github.com/krewire/krew/pkg/transport"
@@ -21,20 +19,20 @@ import (
 )
 
 type mockTokenVerifier struct {
-	sessions map[string]*identity.Session
+	sessions map[string]*transport.Session
 }
 
 func newMockTokenVerifier() *mockTokenVerifier {
 	return &mockTokenVerifier{
-		sessions: make(map[string]*identity.Session),
+		sessions: make(map[string]*transport.Session),
 	}
 }
 
-func (m *mockTokenVerifier) AddSession(token string, sess *identity.Session) {
+func (m *mockTokenVerifier) AddSession(token string, sess *transport.Session) {
 	m.sessions[token] = sess
 }
 
-func (m *mockTokenVerifier) VerifyToken(_ context.Context, token string) (*identity.Session, error) {
+func (m *mockTokenVerifier) VerifyToken(_ context.Context, token string) (*transport.Session, error) {
 	sess, ok := m.sessions[token]
 	if !ok {
 		return nil, errors.New("invalid or expired token")
@@ -71,7 +69,7 @@ func TestHTTPServer_Auth_UnauthorizedReturns401(t *testing.T) {
 
 	// Case 3: Valid bearer token succeeds
 	{
-		verifier.AddSession("valid-token", &identity.Session{
+		verifier.AddSession("valid-token", &transport.Session{
 			ID:        "sess_1",
 			TenantID:  "tenant_abc",
 			UserID:    "user_123",
@@ -144,7 +142,7 @@ func TestHTTPServer_Auth_WorkspaceSandboxingAndPathTrapped(t *testing.T) {
 	}
 
 	verifier := newMockTokenVerifier()
-	verifier.AddSession("t1-token", &identity.Session{
+	verifier.AddSession("t1-token", &transport.Session{
 		ID:        "sess_t1",
 		TenantID:  "tenant_1",
 		UserID:    "user_t1",
@@ -172,7 +170,7 @@ func TestHTTPServer_Auth_WorkspaceSandboxingAndPathTrapped(t *testing.T) {
 				t.Fatalf("agent.New: %v", err)
 			}
 
-			eval := rbac.NewEvaluator()
+			eval := agent.NewMemoryAuthorizer()
 			srv := transport.NewHTTPServer(ag,
 				transport.WithVerifier(verifier),
 				transport.WithTenantBaseDir(tenantBase),
@@ -234,7 +232,7 @@ func TestHTTPServer_Auth_SSEStreamingRetainsAuthContext(t *testing.T) {
 	}
 
 	verifier := newMockTokenVerifier()
-	verifier.AddSession("stream-token", &identity.Session{
+	verifier.AddSession("stream-token", &transport.Session{
 		ID:        "sess_stream",
 		TenantID:  "tenant_stream_99",
 		UserID:    "user_stream_42",
