@@ -159,3 +159,29 @@ func TestRegistry(t *testing.T) {
 		t.Errorf("expected 6 ai tools, got %d", len(aiTools))
 	}
 }
+
+func TestFetchURLTool_SSRFProtection(t *testing.T) {
+	ctx := context.Background()
+	tool := &FetchURLTool{}
+
+	blockedURLs := []string{
+		"ftp://example.com/file",
+		"file:///etc/passwd",
+		"http://127.0.0.1:8080/admin",
+		"http://localhost:3000/",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://metadata.google.internal/computeMetadata/v1/",
+		"http://10.0.0.1/status",
+		"http://192.168.1.1/router",
+	}
+
+	for _, u := range blockedURLs {
+		t.Run(u, func(t *testing.T) {
+			args, _ := json.Marshal(map[string]string{"url": u})
+			_, err := tool.Execute(ctx, args)
+			if err == nil {
+				t.Errorf("expected error for blocked SSRF URL %q, got nil", u)
+			}
+		})
+	}
+}

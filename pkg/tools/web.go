@@ -3,15 +3,22 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"time"
+	"net/url"
+
+	"github.com/krewire/krewire/pkg/sec"
 )
+
+// ErrSSRFBlocked is returned when a requested URL is rejected due to SSRF protection.
+var ErrSSRFBlocked = errors.New("security error: SSRF protection blocked request to private/restricted host")
 
 // FetchURLTool performs an HTTP GET request to fetch remote content or API data.
 type FetchURLTool struct {
-	Client *http.Client
+	Client       *http.Client
+	AllowedHosts []string
 }
 
 func (t *FetchURLTool) Name() string { return "fetch_url" }
@@ -39,9 +46,21 @@ func (t *FetchURLTool) Execute(ctx context.Context, args json.RawMessage) (any, 
 		return nil, fmt.Errorf("invalid args: %w", err)
 	}
 
+	u, err := url.ParseRequestURI(input.URL)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return nil, fmt.Errorf("invalid URL: %q", input.URL)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, fmt.Errorf("scheme %q is not permitted; only http and https are allowed", u.Scheme)
+	}
+
 	client := t.Client
 	if client == nil {
-		client = &http.Client{Timeout: 15 * time.Second}
+		var opts []sec.SafeTransportOption
+		if len(t.AllowedHosts) > 0 {
+			opts = append(opts, sec.WithAllowedHosts(t.AllowedHosts...))
+		}
+		client = sec.NewSafeHTTPClient(opts...)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, input.URL, nil)
@@ -52,6 +71,9 @@ func (t *FetchURLTool) Execute(ctx context.Context, args json.RawMessage) (any, 
 
 	resp, err := client.Do(req)
 	if err != nil {
+		if errors.Is(err, sec.ErrOutboundHostDenied) || errors.Is(err, sec.ErrOutboundURLInvalid) {
+			return nil, fmt.Errorf("%w: %v", ErrSSRFBlocked, err)
+		}
 		return nil, fmt.Errorf("fetch error: %w", err)
 	}
 	defer resp.Body.Close()
