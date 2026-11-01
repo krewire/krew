@@ -259,3 +259,50 @@ func TestHTTPServer_Auth_SSEStreamingRetainsAuthContext(t *testing.T) {
 		t.Errorf("expected UserID user_stream_42 in stream context, got %q", checker.userObserved)
 	}
 }
+
+func TestHTTPServer_UnconfiguredFailsClosed(t *testing.T) {
+	ag := setupTestAgent()
+	srv := transport.NewHTTPServer(ag) // no verifier, noAuth=false
+
+	req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(`{"prompt":"hello"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401 Unauthorized for unconfigured verifier, got %d", rec.Code)
+	}
+}
+
+func TestHTTPServer_CORSAllowedOrigins(t *testing.T) {
+	ag := setupTestAgent()
+	srv := transport.NewHTTPServer(ag,
+		transport.WithNoAuth(true),
+		transport.WithAllowedOrigins("https://app.krewire.com"),
+	)
+
+	// Allowed origin
+	req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(`{"prompt":"test","stream":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://app.krewire.com")
+	rec := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rec, req)
+
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://app.krewire.com" {
+		t.Errorf("expected Access-Control-Allow-Origin 'https://app.krewire.com', got %q", got)
+	}
+
+	// Disallowed origin
+	reqBad := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(`{"prompt":"test","stream":true}`))
+	reqBad.Header.Set("Content-Type", "application/json")
+	reqBad.Header.Set("Origin", "https://malicious.com")
+	recBad := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(recBad, reqBad)
+
+	if got := recBad.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("expected empty Access-Control-Allow-Origin for disallowed origin, got %q", got)
+	}
+}

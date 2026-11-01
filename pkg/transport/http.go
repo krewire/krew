@@ -77,18 +77,24 @@ func (v *SessionStoreVerifier) VerifyToken(ctx context.Context, token string) (*
 
 // HTTPServer exposes the Krew Agent via REST and Server-Sent Events (SSE).
 type HTTPServer struct {
-	agent         *agent.Agent
-	mux           *http.ServeMux
-	verifier      TokenVerifier
-	noAuth        bool
-	tenantBaseDir string
-	evaluator     *rbac.Evaluator
-	auditLedger   audit.AuditLogger
-	mu            sync.RWMutex
+	agent          *agent.Agent
+	mux            *http.ServeMux
+	verifier       TokenVerifier
+	noAuth         bool
+	tenantBaseDir  string
+	evaluator      *rbac.Evaluator
+	auditLedger    audit.AuditLogger
+	allowedOrigins []string
+	mu             sync.RWMutex
 }
 
 // ServerOption configures an HTTPServer instance.
 type ServerOption func(*HTTPServer)
+
+// WithAllowedOrigins configures the allowed CORS origins for agent endpoints.
+func WithAllowedOrigins(origins ...string) ServerOption {
+	return func(s *HTTPServer) { s.allowedOrigins = origins }
+}
 
 // WithVerifier configures a token verifier for Bearer authentication.
 func WithVerifier(v TokenVerifier) ServerOption {
@@ -158,8 +164,11 @@ type RunRequest struct {
 }
 
 func (s *HTTPServer) authenticate(r *http.Request) (context.Context, *identity.Session, error) {
-	if s.noAuth || s.verifier == nil {
+	if s.noAuth {
 		return r.Context(), nil, nil
+	}
+	if s.verifier == nil {
+		return nil, nil, errors.New("authentication verifier unconfigured: fail-closed")
 	}
 	authHeader := r.Header.Get("Authorization")
 	if !strings.HasPrefix(authHeader, "Bearer ") {
@@ -198,7 +207,35 @@ func (s *HTTPServer) scopedAgent(sess *identity.Session) *agent.Agent {
 	return s.agent.Clone(opts...)
 }
 
+func (s *HTTPServer) applyCORS(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return
+	}
+	for _, allowed := range s.allowedOrigins {
+		if allowed == "*" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			return
+		}
+		if allowed == origin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			return
+		}
+	}
+}
+
 func (s *HTTPServer) handleRun(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		s.applyCORS(w, r)
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	s.applyCORS(w, r)
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -263,7 +300,7 @@ func (s *HTTPServer) streamRun(w http.ResponseWriter, r *http.Request, execAgent
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	s.applyCORS(w, r)
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 

@@ -46,7 +46,7 @@ func TestHTTPServer_Health(t *testing.T) {
 
 func TestHTTPServer_Run(t *testing.T) {
 	ag := setupTestAgent()
-	srv := transport.NewHTTPServer(ag)
+	srv := transport.NewHTTPServer(ag, transport.WithNoAuth(true))
 
 	payload := `{"prompt": "Hello server", "stream": false}`
 	req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(payload))
@@ -70,7 +70,7 @@ func TestHTTPServer_Run(t *testing.T) {
 
 func TestHTTPServer_RunStreamSSE(t *testing.T) {
 	ag := setupTestAgent()
-	srv := transport.NewHTTPServer(ag)
+	srv := transport.NewHTTPServer(ag, transport.WithNoAuth(true))
 
 	payload := `{"prompt": "Stream to me", "stream": true}`
 	req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(payload))

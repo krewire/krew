@@ -79,7 +79,7 @@ func asText(v any) string {
 }
 
 func TestHTTPServer_StreamEventSequence(t *testing.T) {
-	srv := transport.NewHTTPServer(setupTestAgent())
+	srv := transport.NewHTTPServer(setupTestAgent(), transport.WithNoAuth(true))
 
 	frames := streamSSE(t, srv.Handler(), "/api/agent/run", `{"prompt":"Stream to me","stream":true}`, nil)
 	if len(frames) == 0 {
@@ -125,7 +125,7 @@ func TestHTTPServer_StreamEventSequence(t *testing.T) {
 // TestHTTPServer_AcceptHeaderTriggersSSE verifies Accept: text/event-stream
 // negotiation without the JSON body flag.
 func TestHTTPServer_AcceptHeaderTriggersSSE(t *testing.T) {
-	srv := transport.NewHTTPServer(setupTestAgent())
+	srv := transport.NewHTTPServer(setupTestAgent(), transport.WithNoAuth(true))
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/agent/chat", strings.NewReader(`{"prompt":"hi"}`))
@@ -180,7 +180,7 @@ func TestHTTPServer_ClientDisconnectStopsAgent(t *testing.T) {
 		t.Fatalf("agent.New: %v", err)
 	}
 
-	server := httptest.NewServer(transport.NewHTTPServer(ag).Handler())
+	server := httptest.NewServer(transport.NewHTTPServer(ag, transport.WithNoAuth(true)).Handler())
 	defer server.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
