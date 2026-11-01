@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/krewire/krew/pkg/memory"
 	"github.com/krewire/krew/pkg/tools"
@@ -272,4 +273,156 @@ func (m *mockHugeTool) Parameters() map[string]any {
 }
 func (m *mockHugeTool) Execute(ctx context.Context, args json.RawMessage) (any, error) {
 	return m.output, nil
+}
+
+type mockSleeperTool struct {
+	name         string
+	delay        time.Duration
+	result       string
+	parallelSafe bool
+}
+
+func (m *mockSleeperTool) Name() string               { return m.name }
+func (m *mockSleeperTool) Description() string        { return "sleeper tool for concurrency tests" }
+func (m *mockSleeperTool) Parameters() map[string]any { return map[string]any{"type": "object"} }
+func (m *mockSleeperTool) ParallelSafe() bool         { return m.parallelSafe }
+func (m *mockSleeperTool) Execute(ctx context.Context, args json.RawMessage) (any, error) {
+	select {
+	case <-time.After(m.delay):
+		return m.result, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func TestAgent_ConcurrentToolExecutionSpeedup(t *testing.T) {
+	registry := tools.NewRegistry()
+	registry.Register(
+		&mockSleeperTool{name: "fast_1", delay: 80 * time.Millisecond, result: "result_1", parallelSafe: true},
+		&mockSleeperTool{name: "fast_2", delay: 80 * time.Millisecond, result: "result_2", parallelSafe: true},
+		&mockSleeperTool{name: "fast_3", delay: 80 * time.Millisecond, result: "result_3", parallelSafe: true},
+	)
+
+	mock := &multiStepMock{
+		responses: []*ai.CompletionResponse{
+			{
+				Content: "Executing 3 parallel tools",
+				ToolCalls: []ai.ToolCall{
+					{ID: "call_1", Name: "fast_1", Arguments: `{}`},
+					{ID: "call_2", Name: "fast_2", Arguments: `{}`},
+					{ID: "call_3", Name: "fast_3", Arguments: `{}`},
+				},
+			},
+			{
+				Content:      "All done.",
+				FinishReason: "stop",
+			},
+		},
+	}
+
+	ag, err := New(
+		WithProvider(mock),
+		WithTools(registry),
+		WithMaxConcurrentTools(4),
+	)
+	if err != nil {
+		t.Fatalf("agent init failed: %v", err)
+	}
+
+	start := time.Now()
+	resp, err := ag.Run(context.Background(), "run parallel tools")
+	if err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
+	elapsed := time.Since(start)
+
+	if resp.Content != "All done." {
+		t.Errorf("unexpected content: %s", resp.Content)
+	}
+
+	// 3 tools running 80ms each sequentially would take >= 240ms.
+	// Running concurrently with max concurrency 4 should take under 180ms.
+	if elapsed >= 200*time.Millisecond {
+		t.Errorf("expected concurrent execution (<200ms), took %v", elapsed)
+	}
+
+	// Verify deterministic tool message order in memory
+	msgs := ag.Memory().Messages()
+	var toolMsgs []ai.Message
+	for _, m := range msgs {
+		if m.Role == ai.RoleTool {
+			toolMsgs = append(toolMsgs, m)
+		}
+	}
+
+	if len(toolMsgs) != 3 {
+		t.Fatalf("expected 3 tool messages in memory, got %d", len(toolMsgs))
+	}
+	if toolMsgs[0].ToolCallID != "call_1" || toolMsgs[0].Content != "result_1" {
+		t.Errorf("expected call_1 first, got ID %q content %q", toolMsgs[0].ToolCallID, toolMsgs[0].Content)
+	}
+	if toolMsgs[1].ToolCallID != "call_2" || toolMsgs[1].Content != "result_2" {
+		t.Errorf("expected call_2 second, got ID %q content %q", toolMsgs[1].ToolCallID, toolMsgs[1].Content)
+	}
+	if toolMsgs[2].ToolCallID != "call_3" || toolMsgs[2].Content != "result_3" {
+		t.Errorf("expected call_3 third, got ID %q content %q", toolMsgs[2].ToolCallID, toolMsgs[2].Content)
+	}
+}
+
+func TestAgent_DeterministicOrderWithVaryingLatencies(t *testing.T) {
+	registry := tools.NewRegistry()
+	// slow_1 takes 80ms, fast_2 takes 10ms. fast_2 will finish earlier in time.
+	registry.Register(
+		&mockSleeperTool{name: "slow_1", delay: 80 * time.Millisecond, result: "slow_output", parallelSafe: true},
+		&mockSleeperTool{name: "fast_2", delay: 10 * time.Millisecond, result: "fast_output", parallelSafe: true},
+	)
+
+	mock := &multiStepMock{
+		responses: []*ai.CompletionResponse{
+			{
+				Content: "Running tools with uneven latency",
+				ToolCalls: []ai.ToolCall{
+					{ID: "call_slow", Name: "slow_1", Arguments: `{}`},
+					{ID: "call_fast", Name: "fast_2", Arguments: `{}`},
+				},
+			},
+			{
+				Content:      "Finished.",
+				FinishReason: "stop",
+			},
+		},
+	}
+
+	ag, err := New(
+		WithProvider(mock),
+		WithTools(registry),
+		WithMaxConcurrentTools(2),
+	)
+	if err != nil {
+		t.Fatalf("agent init failed: %v", err)
+	}
+
+	_, err = ag.Run(context.Background(), "run tools")
+	if err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
+
+	msgs := ag.Memory().Messages()
+	var toolMsgs []ai.Message
+	for _, m := range msgs {
+		if m.Role == ai.RoleTool {
+			toolMsgs = append(toolMsgs, m)
+		}
+	}
+
+	if len(toolMsgs) != 2 {
+		t.Fatalf("expected 2 tool messages, got %d", len(toolMsgs))
+	}
+	// Despite fast_2 completing first, memory order MUST preserve the prompt call order
+	if toolMsgs[0].ToolCallID != "call_slow" || toolMsgs[0].Content != "slow_output" {
+		t.Errorf("first message should be call_slow, got %s: %s", toolMsgs[0].ToolCallID, toolMsgs[0].Content)
+	}
+	if toolMsgs[1].ToolCallID != "call_fast" || toolMsgs[1].Content != "fast_output" {
+		t.Errorf("second message should be call_fast, got %s: %s", toolMsgs[1].ToolCallID, toolMsgs[1].Content)
+	}
 }

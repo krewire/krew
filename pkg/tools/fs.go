@@ -110,6 +110,9 @@ func (t *ReadFileTool) Execute(ctx context.Context, args json.RawMessage) (any, 
 	return string(b), nil
 }
 
+// ParallelSafe marks ReadFileTool as safe for concurrent read operations.
+func (t *ReadFileTool) ParallelSafe() bool { return true }
+
 // --- WriteFileTool ---
 
 type WriteFileTool struct {
@@ -265,3 +268,6 @@ func (t *ListDirTool) Execute(ctx context.Context, args json.RawMessage) (any, e
 	}
 	return res, nil
 }
+
+// ParallelSafe marks ListDirTool as safe for concurrent directory listing operations.
+func (t *ListDirTool) ParallelSafe() bool { return true }

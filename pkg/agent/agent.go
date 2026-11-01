@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/krewire/krew/pkg/memory"
@@ -20,11 +21,15 @@ var (
 
 // Agent is an autonomous, multi-turn AI reasoning engine with tool-calling capabilities.
 type Agent struct {
-	opts Options
+	opts   Options
+	emitMu *sync.Mutex
 }
 
 // DefaultMaxToolResultTokens limits tool response sizes to avoid context explosion.
-const DefaultMaxToolResultTokens = 8_000
+const (
+	DefaultMaxToolResultTokens = 8_000
+	DefaultMaxConcurrentTools  = 4
+)
 
 // New constructs an initialized Agent.
 func New(opts ...Option) (*Agent, error) {
@@ -33,6 +38,7 @@ func New(opts ...Option) (*Agent, error) {
 		MaxSteps:            25,
 		Registry:            tools.NewRegistry(),
 		MaxToolResultTokens: DefaultMaxToolResultTokens,
+		MaxConcurrentTools:  DefaultMaxConcurrentTools,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -53,8 +59,11 @@ func New(opts ...Option) (*Agent, error) {
 	if cfg.MaxToolResultTokens <= 0 {
 		cfg.MaxToolResultTokens = DefaultMaxToolResultTokens
 	}
+	if cfg.MaxConcurrentTools <= 0 {
+		cfg.MaxConcurrentTools = DefaultMaxConcurrentTools
+	}
 
-	return &Agent{opts: cfg}, nil
+	return &Agent{opts: cfg, emitMu: &sync.Mutex{}}, nil
 }
 
 // Response holds the outcome of an agent run.
@@ -78,7 +87,7 @@ func (a *Agent) RunWithHandler(ctx context.Context, prompt string, h EventHandle
 		return a.Run(ctx, prompt)
 	}
 
-	clone := *a
+	clone := &Agent{opts: a.opts, emitMu: &sync.Mutex{}}
 	orig := a.opts.OnEvent
 	clone.opts.OnEvent = func(e Event) {
 		if orig != nil {
@@ -91,11 +100,11 @@ func (a *Agent) RunWithHandler(ctx context.Context, prompt string, h EventHandle
 
 // Clone creates a copy of the agent with modified options.
 func (a *Agent) Clone(opts ...Option) *Agent {
-	cp := *a
+	cp := &Agent{opts: a.opts, emitMu: &sync.Mutex{}}
 	for _, opt := range opts {
 		opt(&cp.opts)
 	}
-	return &cp
+	return cp
 }
 
 // Chat continues an existing conversation with a new user message.
@@ -127,8 +136,90 @@ func (a *Agent) emit(e Event) {
 		if e.Timestamp.IsZero() {
 			e.Timestamp = time.Now()
 		}
+		if a.emitMu != nil {
+			a.emitMu.Lock()
+			defer a.emitMu.Unlock()
+		}
 		a.opts.OnEvent(e)
 	}
+}
+
+func (a *Agent) isToolParallelSafe(name string) bool {
+	if a.opts.Registry == nil {
+		return false
+	}
+	t, ok := a.opts.Registry.Get(name)
+	if !ok {
+		return false
+	}
+	return tools.IsParallelSafe(t)
+}
+
+type toolExecOutcome struct {
+	payload string
+	denied  bool
+	err     error
+}
+
+func (a *Agent) executeSingleTool(ctx context.Context, step int, call ai.ToolCall) toolExecOutcome {
+	a.emit(Event{
+		Type:     EventToolCall,
+		Step:     step,
+		ToolID:   call.ID,
+		ToolName: call.Name,
+		ToolArgs: call.Arguments,
+	})
+
+	// Check optional approval gate
+	if a.opts.Approver != nil && !a.opts.Approver(call.Name, json.RawMessage(call.Arguments)) {
+		deniedMsg := fmt.Sprintf("Tool %s execution denied by user or security policy", call.Name)
+		a.emit(Event{
+			Type:     EventToolResult,
+			Step:     step,
+			ToolID:   call.ID,
+			ToolName: call.Name,
+			Error:    deniedMsg,
+		})
+		return toolExecOutcome{payload: deniedMsg, denied: true}
+	}
+
+	// Execute tool
+	result, toolErr := a.opts.Registry.Execute(ctx, call.Name, json.RawMessage(call.Arguments))
+	var resPayload string
+	if toolErr != nil {
+		resPayload = fmt.Sprintf("Error: %v", toolErr)
+		a.emit(Event{
+			Type:     EventToolResult,
+			Step:     step,
+			ToolID:   call.ID,
+			ToolName: call.Name,
+			Error:    toolErr.Error(),
+		})
+	} else {
+		if str, ok := result.(string); ok {
+			resPayload = str
+		} else {
+			b, _ := json.Marshal(result)
+			resPayload = string(b)
+		}
+		a.emit(Event{
+			Type:     EventToolResult,
+			Step:     step,
+			ToolID:   call.ID,
+			ToolName: call.Name,
+			Result:   result,
+		})
+	}
+
+	if a.opts.MaxToolResultTokens > 0 && memory.EstimateTokens(resPayload) > a.opts.MaxToolResultTokens {
+		maxRunes := a.opts.MaxToolResultTokens * 4
+		runes := []rune(resPayload)
+		if len(runes) > maxRunes {
+			resPayload = string(runes[:maxRunes]) + "\n... [tool output truncated: exceeded token limit]"
+		}
+	}
+
+	return toolExecOutcome{payload: resPayload, err: toolErr}
 }
 
 func (a *Agent) stepLoop(ctx context.Context) (*Response, error) {
@@ -195,70 +286,87 @@ func (a *Agent) stepLoop(ctx context.Context) (*Response, error) {
 		}
 		a.opts.Memory.Add(assistantMsg)
 
-		for _, call := range resp.ToolCalls {
-			toolCallsRun++
-			a.emit(Event{
-				Type:     EventToolCall,
-				Step:     step,
-				ToolID:   call.ID,
-				ToolName: call.Name,
-				ToolArgs: call.Arguments,
-			})
+		results := make([]toolExecOutcome, len(resp.ToolCalls))
 
-			// Check optional approval gate
-			if a.opts.Approver != nil && !a.opts.Approver(call.Name, json.RawMessage(call.Arguments)) {
-				deniedMsg := fmt.Sprintf("Tool %s execution denied by user or security policy", call.Name)
-				a.opts.Memory.Add(ai.ToolMessage(call.ID, deniedMsg))
-				a.emit(Event{
-					Type:     EventToolResult,
-					Step:     step,
-					ToolID:   call.ID,
-					ToolName: call.Name,
-					Error:    deniedMsg,
-				})
-				if a.opts.StrictApprovals {
-					return nil, fmt.Errorf("%w: tool %s execution denied", ErrPermissionDenied, call.Name)
-				}
-				continue
-			}
+		// Partition tool calls into contiguous batches:
+		// Sequences of parallel-safe tools can execute concurrently within a bounded worker pool.
+		// Any non-parallel-safe tool acts as a single-item barrier executed sequentially.
+		var batches [][]int
+		var currentBatch []int
 
-			// Execute tool
-			result, toolErr := a.opts.Registry.Execute(ctx, call.Name, json.RawMessage(call.Arguments))
-			var resPayload string
-			if toolErr != nil {
-				resPayload = fmt.Sprintf("Error: %v", toolErr)
-				a.emit(Event{
-					Type:     EventToolResult,
-					Step:     step,
-					ToolID:   call.ID,
-					ToolName: call.Name,
-					Error:    toolErr.Error(),
-				})
+		concurrency := a.opts.MaxConcurrentTools
+		if concurrency <= 0 {
+			concurrency = DefaultMaxConcurrentTools
+		}
+
+		for i, call := range resp.ToolCalls {
+			if concurrency > 1 && a.isToolParallelSafe(call.Name) {
+				currentBatch = append(currentBatch, i)
 			} else {
-				if str, ok := result.(string); ok {
-					resPayload = str
-				} else {
-					b, _ := json.Marshal(result)
-					resPayload = string(b)
+				if len(currentBatch) > 0 {
+					batches = append(batches, currentBatch)
+					currentBatch = nil
 				}
-				a.emit(Event{
-					Type:     EventToolResult,
-					Step:     step,
-					ToolID:   call.ID,
-					ToolName: call.Name,
-					Result:   result,
-				})
+				batches = append(batches, []int{i})
 			}
+		}
+		if len(currentBatch) > 0 {
+			batches = append(batches, currentBatch)
+		}
 
-			if a.opts.MaxToolResultTokens > 0 && memory.EstimateTokens(resPayload) > a.opts.MaxToolResultTokens {
-				maxRunes := a.opts.MaxToolResultTokens * 4
-				runes := []rune(resPayload)
-				if len(runes) > maxRunes {
-					resPayload = string(runes[:maxRunes]) + "\n... [tool output truncated: exceeded token limit]"
+		var strictDeniedTool string
+		for _, batch := range batches {
+			if len(batch) == 1 {
+				idx := batch[0]
+				call := resp.ToolCalls[idx]
+				res := a.executeSingleTool(ctx, step, call)
+				results[idx] = res
+				if res.denied && a.opts.StrictApprovals {
+					strictDeniedTool = call.Name
+					break
+				}
+			} else {
+				// Concurrent execution for parallel-safe batch
+				sem := make(chan struct{}, concurrency)
+				var wg sync.WaitGroup
+				var mu sync.Mutex
+
+				for _, idx := range batch {
+					call := resp.ToolCalls[idx]
+					wg.Add(1)
+					go func(i int, c ai.ToolCall) {
+						defer wg.Done()
+						sem <- struct{}{}
+						defer func() { <-sem }()
+
+						res := a.executeSingleTool(ctx, step, c)
+						results[i] = res
+						if res.denied && a.opts.StrictApprovals {
+							mu.Lock()
+							if strictDeniedTool == "" {
+								strictDeniedTool = c.Name
+							}
+							mu.Unlock()
+						}
+					}(idx, call)
+				}
+				wg.Wait()
+				if strictDeniedTool != "" {
+					break
 				}
 			}
+		}
 
-			a.opts.Memory.Add(ai.ToolMessage(call.ID, resPayload))
+		// Preserve deterministic tool result order in Memory
+		for i, call := range resp.ToolCalls {
+			if results[i].payload != "" || results[i].denied || results[i].err != nil {
+				toolCallsRun++
+				a.opts.Memory.Add(ai.ToolMessage(call.ID, results[i].payload))
+			}
+		}
+
+		if strictDeniedTool != "" {
+			return nil, fmt.Errorf("%w: tool %s execution denied", ErrPermissionDenied, strictDeniedTool)
 		}
 	}
 

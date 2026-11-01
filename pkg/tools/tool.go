@@ -15,6 +15,20 @@ type Tool interface {
 	Execute(ctx context.Context, args json.RawMessage) (any, error)
 }
 
+// ParallelTool is an optional interface tools can implement to declare
+// whether they are safe for concurrent execution.
+type ParallelTool interface {
+	ParallelSafe() bool
+}
+
+// IsParallelSafe returns true if the tool implements ParallelTool and reports true.
+func IsParallelSafe(t Tool) bool {
+	if pt, ok := t.(ParallelTool); ok {
+		return pt.ParallelSafe()
+	}
+	return false
+}
+
 // ToAITool converts a Tool into the lower-level ai.Tool specification.
 func ToAITool(t Tool) ai.Tool {
 	return ai.Tool{

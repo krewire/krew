@@ -52,6 +52,9 @@ type GrepSearchTool struct {
 
 func (t *GrepSearchTool) Name() string { return "grep_search" }
 
+// ParallelSafe marks GrepSearchTool as safe for concurrent search execution.
+func (t *GrepSearchTool) ParallelSafe() bool { return true }
+
 func (t *GrepSearchTool) Description() string {
 	return "Search file contents with a regular expression. Supports case-insensitive matching, glob include/exclude filters, and built-in skip lists (.git, node_modules, vendor, build outputs). Returns file path, line number, and matched line."
 }
@@ -190,6 +193,9 @@ type FindFilesTool struct {
 }
 
 func (t *FindFilesTool) Name() string { return "find_files" }
+
+// ParallelSafe marks FindFilesTool as safe for concurrent file finding execution.
+func (t *FindFilesTool) ParallelSafe() bool { return true }
 
 func (t *FindFilesTool) Description() string {
 	return `Find files and directories by glob pattern relative to the workspace (e.g. "pkg/**/*.go", "README*", "Makefile"). "**" matches any number of directories.`

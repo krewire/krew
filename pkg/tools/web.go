@@ -25,6 +25,9 @@ func (t *FetchURLTool) Name() string { return "fetch_url" }
 func (t *FetchURLTool) Description() string {
 	return "Fetch the textual content or JSON of a given public URL over HTTP/HTTPS."
 }
+
+// ParallelSafe marks FetchURLTool as safe for concurrent web fetching execution.
+func (t *FetchURLTool) ParallelSafe() bool { return true }
 func (t *FetchURLTool) Parameters() map[string]any {
 	return map[string]any{
 		"type": "object",

@@ -30,6 +30,10 @@ type Options struct {
 	// MaxToolResultTokens limits the estimated token count of individual tool output turns.
 	MaxToolResultTokens int
 
+	// MaxConcurrentTools limits the maximum number of independent parallel-safe tools
+	// that can be executed concurrently in a single step (default: DefaultMaxConcurrentTools).
+	MaxConcurrentTools int
+
 	// Subagent delegation plumbing.
 	SubDepth int    // delegation levels below the root agent (0 = root)
 	ThreadID string // nested thread id (parent_id:child_id) for events
@@ -105,4 +109,9 @@ func WithEventHandler(h EventHandler) Option {
 // WithMaxToolResultTokens bounds the estimated token count of each tool result payload.
 func WithMaxToolResultTokens(tokens int) Option {
 	return func(o *Options) { o.MaxToolResultTokens = tokens }
+}
+
+// WithMaxConcurrentTools bounds the concurrency for executing parallel-safe tools within a step.
+func WithMaxConcurrentTools(concurrency int) Option {
+	return func(o *Options) { o.MaxConcurrentTools = concurrency }
 }
