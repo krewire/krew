@@ -13,7 +13,7 @@ import (
 // ErrPathEscape is returned when a path traversal escape attempt is detected.
 var ErrPathEscape = errors.New("security error: path traversal escape detected")
 
-// SafePath ensures the path resolves within root without directory traversal.
+// SafePath ensures the path resolves within root without directory traversal or symlink escapes.
 func SafePath(root, rel string) (string, error) {
 	if root == "" {
 		return filepath.Clean(rel), nil
@@ -27,6 +27,11 @@ func SafePath(root, rel string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	realRoot, err := filepath.EvalSymlinks(absRoot)
+	if err == nil {
+		absRoot = realRoot
+	}
+
 	target := rel
 	if !filepath.IsAbs(target) {
 		target = filepath.Join(absRoot, target)
@@ -37,6 +42,25 @@ func SafePath(root, rel string) (string, error) {
 	absTarget, err := filepath.Abs(target)
 	if err != nil {
 		return "", err
+	}
+
+	realTarget, err := filepath.EvalSymlinks(absTarget)
+	if err == nil {
+		absTarget = realTarget
+	} else if os.IsNotExist(err) {
+		// Resolve symlinks on the deepest existing parent directory
+		dir := filepath.Dir(absTarget)
+		realDir, dirErr := filepath.EvalSymlinks(dir)
+		for dirErr != nil && os.IsNotExist(dirErr) && dir != filepath.Dir(dir) {
+			dir = filepath.Dir(dir)
+			realDir, dirErr = filepath.EvalSymlinks(dir)
+		}
+		if dirErr == nil {
+			relFromDir, relErr := filepath.Rel(dir, absTarget)
+			if relErr == nil {
+				absTarget = filepath.Join(realDir, relFromDir)
+			}
+		}
 	}
 
 	if absTarget != absRoot && !strings.HasPrefix(absTarget, absRoot+string(filepath.Separator)) {

@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,6 +25,50 @@ func TestSafePath(t *testing.T) {
 	_, err = SafePath(tmp, "../escaped.txt")
 	if err == nil {
 		t.Fatal("expected escape error, got nil")
+	}
+}
+
+func TestSafePath_SymlinkEscape(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+
+	// 1. Existing file outside root symlinked into root
+	outsideFile := filepath.Join(outside, "secret.txt")
+	if err := os.WriteFile(outsideFile, []byte("super secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	symlinkToFile := filepath.Join(root, "link_to_outside.txt")
+	if err := os.Symlink(outsideFile, symlinkToFile); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := SafePath(root, "link_to_outside.txt")
+	if !errors.Is(err, ErrPathEscape) {
+		t.Fatalf("expected ErrPathEscape for symlinked file pointing outside, got: %v", err)
+	}
+
+	// 2. Symlinked directory pointing outside root
+	symlinkToDir := filepath.Join(root, "link_to_out_dir")
+	if err := os.Symlink(outside, symlinkToDir); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = SafePath(root, "link_to_out_dir/new_file.txt")
+	if !errors.Is(err, ErrPathEscape) {
+		t.Fatalf("expected ErrPathEscape for new file inside symlinked outside dir, got: %v", err)
+	}
+
+	// 3. ReadFileTool and WriteFileTool through symlinks return ErrPathEscape
+	readTool := &ReadFileTool{Workspace: root}
+	rArgs, _ := json.Marshal(map[string]string{"path": "link_to_outside.txt"})
+	if _, err := readTool.Execute(context.Background(), rArgs); !errors.Is(err, ErrPathEscape) {
+		t.Fatalf("expected ReadFileTool to return ErrPathEscape on symlink escape, got: %v", err)
+	}
+
+	writeTool := &WriteFileTool{Workspace: root}
+	wArgs, _ := json.Marshal(map[string]string{"path": "link_to_out_dir/test.txt", "content": "bad"})
+	if _, err := writeTool.Execute(context.Background(), wArgs); !errors.Is(err, ErrPathEscape) {
+		t.Fatalf("expected WriteFileTool to return ErrPathEscape on symlink escape, got: %v", err)
 	}
 }
 
