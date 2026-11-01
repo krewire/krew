@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -125,5 +126,25 @@ func TestMCPServer_InitializeAndListTools(t *testing.T) {
 	}
 	if resp2.ID != float64(2) {
 		t.Errorf("unexpected resp2 ID: %v", resp2.ID)
+	}
+}
+
+func TestHTTPServer_OversizedBodyRejected(t *testing.T) {
+	ag := setupTestAgent()
+	srv := transport.NewHTTPServer(ag,
+		transport.WithNoAuth(true),
+		transport.WithMaxBodySize(1024),
+	)
+
+	largePrompt := strings.Repeat("A", 2048)
+	payload := fmt.Sprintf(`{"prompt": "%s"}`, largePrompt)
+	req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected status 413 Payload Too Large, got %d: %s", rec.Code, rec.Body.String())
 	}
 }

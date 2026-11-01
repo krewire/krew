@@ -203,6 +203,7 @@ func TestHTTPServer_ClientDisconnectStopsAgent(t *testing.T) {
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "data: ") {
 			cancel()
+			_ = res.Body.Close()
 			break
 		}
 	}

@@ -75,6 +75,9 @@ func (v *SessionStoreVerifier) VerifyToken(ctx context.Context, token string) (*
 	return sess, nil
 }
 
+// DefaultMaxBodySize is the default ceiling for incoming request bodies (1MB).
+const DefaultMaxBodySize int64 = 1 << 20
+
 // HTTPServer exposes the Krew Agent via REST and Server-Sent Events (SSE).
 type HTTPServer struct {
 	agent          *agent.Agent
@@ -85,11 +88,21 @@ type HTTPServer struct {
 	evaluator      *rbac.Evaluator
 	auditLedger    audit.AuditLogger
 	allowedOrigins []string
+	maxBodySize    int64
 	mu             sync.RWMutex
 }
 
 // ServerOption configures an HTTPServer instance.
 type ServerOption func(*HTTPServer)
+
+// WithMaxBodySize configures the maximum allowed request body size in bytes.
+func WithMaxBodySize(size int64) ServerOption {
+	return func(s *HTTPServer) {
+		if size > 0 {
+			s.maxBodySize = size
+		}
+	}
+}
 
 // WithAllowedOrigins configures the allowed CORS origins for agent endpoints.
 func WithAllowedOrigins(origins ...string) ServerOption {
@@ -130,6 +143,7 @@ func NewHTTPServer(ag *agent.Agent, opts ...ServerOption) *HTTPServer {
 		agent:         ag,
 		mux:           http.NewServeMux(),
 		tenantBaseDir: "/var/krewire/tenants",
+		maxBodySize:   DefaultMaxBodySize,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -252,8 +266,19 @@ func (s *HTTPServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 	r = r.WithContext(ctx)
 
+	limit := s.maxBodySize
+	if limit <= 0 {
+		limit = DefaultMaxBodySize
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+
 	var req RunRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, "Payload too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, fmt.Sprintf("Invalid JSON body: %v", err), http.StatusBadRequest)
 		return
 	}
