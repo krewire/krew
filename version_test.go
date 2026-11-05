@@ -7,7 +7,7 @@ import (
 )
 
 func TestVersion(t *testing.T) {
-	if krew.VersionString() != "0.1.0" {
-		t.Errorf("expected version 0.1.0, got %s", krew.VersionString())
+	if krew.VersionString() != "0.2.0" {
+		t.Errorf("expected version 0.2.0, got %s", krew.VersionString())
 	}
 }
