@@ -15,6 +15,8 @@ IDEs via Model Context Protocol (stdio MCP).
 
 ## Architecture & Code Discipline
 
+- **The Krewire Pyramid (Tier 4 Platform)**: `krew` is an autonomous AI agent engine. It depends strictly downward on Tier 2 libraries and Tier 1 kernel primitives.
+- **Zero Peer Coupling**: Sibling platforms (`cloud`, `panel`, `auth`, `dash`) interact with `krew` via defined transports (in-process `pkg/embed` API or network Bridge/Gateway over HTTP/SSE/MCP), avoiding direct circular code ties.
 - **Platform-Agnostic**: Keep `krew` free of platform-specific assumptions or hardcoded CGO dependencies.
 - **Strict Separation of Concerns**:
   - `pkg/agent`: ReAct autonomous reasoning-action execution loop and streaming events.
