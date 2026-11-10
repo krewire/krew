@@ -6,8 +6,58 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 )
+
+const (
+	// DefaultCommandTimeout is the default duration for command execution when unspecified.
+	DefaultCommandTimeout = 30 * time.Second
+
+	// MaxCommandTimeout is the maximum permitted timeout ceiling for command execution.
+	MaxCommandTimeout = 10 * time.Minute
+
+	// MaxCommandOutputBytes is the maximum captured output bytes (stdout/stderr) to prevent memory exhaustion.
+	MaxCommandOutputBytes = 512 * 1024
+)
+
+// boundedBuffer captures output up to a maximum byte capacity, safely truncating excess bytes.
+type boundedBuffer struct {
+	buf       bytes.Buffer
+	limit     int
+	truncated bool
+}
+
+func newBoundedBuffer(limit int) *boundedBuffer {
+	if limit <= 0 {
+		limit = MaxCommandOutputBytes
+	}
+	return &boundedBuffer{limit: limit}
+}
+
+func (b *boundedBuffer) Write(p []byte) (n int, err error) {
+	n = len(p)
+	if b.buf.Len() >= b.limit {
+		b.truncated = true
+		return n, nil
+	}
+	remaining := b.limit - b.buf.Len()
+	if len(p) > remaining {
+		b.buf.Write(p[:remaining])
+		b.truncated = true
+	} else {
+		b.buf.Write(p)
+	}
+	return n, nil
+}
+
+func (b *boundedBuffer) String() string {
+	res := b.buf.String()
+	if b.truncated {
+		res += "\n... [output truncated: exceeded limit]"
+	}
+	return res
+}
 
 // RunCommandTool allows executing shell commands with strict timeouts.
 type RunCommandTool struct {
@@ -45,13 +95,19 @@ func (t *RunCommandTool) Execute(ctx context.Context, args json.RawMessage) (any
 	if err := json.Unmarshal(args, &input); err != nil {
 		return nil, fmt.Errorf("invalid args: %w", err)
 	}
+	if strings.TrimSpace(input.Command) == "" {
+		return nil, fmt.Errorf("command is required")
+	}
 
 	timeout := t.DefaultTimeout
 	if timeout <= 0 {
-		timeout = 30 * time.Second
+		timeout = DefaultCommandTimeout
 	}
 	if input.TimeoutSeconds > 0 {
 		timeout = time.Duration(input.TimeoutSeconds) * time.Second
+	}
+	if timeout > MaxCommandTimeout {
+		timeout = MaxCommandTimeout
 	}
 
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -63,9 +119,10 @@ func (t *RunCommandTool) Execute(ctx context.Context, args json.RawMessage) (any
 		cmd.Dir = t.Workspace
 	}
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	stdout := newBoundedBuffer(MaxCommandOutputBytes)
+	stderr := newBoundedBuffer(MaxCommandOutputBytes)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	err := cmd.Run()
 

@@ -6,7 +6,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestSafePath(t *testing.T) {
@@ -25,6 +27,18 @@ func TestSafePath(t *testing.T) {
 	_, err = SafePath(tmp, "../escaped.txt")
 	if err == nil {
 		t.Fatal("expected escape error, got nil")
+	}
+
+	// Backslash escape attempt (Windows-style traversal)
+	_, err = SafePath(tmp, "..\\escaped.txt")
+	if err == nil {
+		t.Fatal("expected backslash escape error, got nil")
+	}
+
+	// Null byte injection attempt
+	_, err = SafePath(tmp, "sub/file\x00.txt")
+	if err == nil {
+		t.Fatal("expected null byte escape error, got nil")
 	}
 }
 
@@ -143,6 +157,51 @@ func TestRunCommandTool(t *testing.T) {
 	m := res.(map[string]any)
 	if m["stdout"] != "krew agent test\n" {
 		t.Errorf("expected stdout 'krew agent test\\n', got %q", m["stdout"])
+	}
+}
+
+func TestRunCommandTool_EmptyCommand(t *testing.T) {
+	tool := &RunCommandTool{}
+	ctx := context.Background()
+
+	args, _ := json.Marshal(map[string]string{
+		"command": "   ",
+	})
+	_, err := tool.Execute(ctx, args)
+	if err == nil {
+		t.Fatal("expected error for empty command, got nil")
+	}
+}
+
+func TestRunCommandTool_Timeout(t *testing.T) {
+	tool := &RunCommandTool{DefaultTimeout: 20 * time.Millisecond}
+	ctx := context.Background()
+
+	args, _ := json.Marshal(map[string]any{
+		"command": "sleep 0.15",
+	})
+	res, err := tool.Execute(ctx, args)
+	if err != nil {
+		t.Fatalf("unexpected execution failure: %v", err)
+	}
+	m := res.(map[string]any)
+	if _, ok := m["error"]; !ok {
+		t.Fatalf("expected error field in timeout response, got %+v", m)
+	}
+}
+
+func TestRunCommandTool_OutputTruncation(t *testing.T) {
+	buf := newBoundedBuffer(64)
+	chunk := []byte("1234567890123456") // 16 bytes
+	for i := 0; i < 10; i++ {
+		_, _ = buf.Write(chunk)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "[output truncated: exceeded limit]") {
+		t.Fatalf("expected output truncation notice, got %q", out)
+	}
+	if !buf.truncated {
+		t.Fatalf("expected truncated flag to be true")
 	}
 }
 

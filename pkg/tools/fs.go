@@ -15,11 +15,15 @@ var ErrPathEscape = errors.New("security error: path traversal escape detected")
 
 // SafePath ensures the path resolves within root without directory traversal or symlink escapes.
 func SafePath(root, rel string) (string, error) {
+	if strings.Contains(rel, "\x00") {
+		return "", fmt.Errorf("%w: path contains null byte", ErrPathEscape)
+	}
 	if root == "" {
 		return filepath.Clean(rel), nil
 	}
-	cleanRel := filepath.Clean(rel)
-	if cleanRel == ".." || strings.HasPrefix(cleanRel, ".."+string(filepath.Separator)) {
+	normalized := strings.ReplaceAll(rel, "\\", "/")
+	cleanRel := filepath.Clean(filepath.FromSlash(normalized))
+	if cleanRel == ".." || strings.HasPrefix(cleanRel, ".."+string(filepath.Separator)) || cleanRel == "/" || strings.HasPrefix(cleanRel, "../") {
 		return "", fmt.Errorf("%w: path %q attempts traversal outside sandbox", ErrPathEscape, rel)
 	}
 
