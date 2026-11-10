@@ -1,0 +1,108 @@
+name: Hotfix Pipeline (Fast-Track)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Krew Emergency Hotfix Pipeline (ADR-R7P3K)
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - 'hotfix'
+      - 'hotfix/**'
+      - 'hotfix-*'
+  workflow_dispatch:
+    inputs:
+      description:
+        description: 'Hotfix patch summary'
+        required: false
+        default: 'Emergency agent engine hotfix'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hotfix-krew-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Fast-Track Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: Quality Gates
+        run: |
+          gofmt -l .
+          go vet ./...
+          go test -v ./layering_test.go
+          go test -v ./...
+          CGO_ENABLED=0 go build ./...
+
+  publish-hotfix:
+    name: Tag & Release Hotfix
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute Hotfix Version
+        id: patch
+        run: |
+          git fetch --tags
+          LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo 'v0.2.0')"
+          BASE_VER="$(echo "$LAST_TAG" | sed -E 's/-.*//')"
+          MAJOR="$(echo "$BASE_VER" | cut -d. -f1)"
+          MINOR="$(echo "$BASE_VER" | cut -d. -f2)"
+          PATCH="$(echo "$BASE_VER" | cut -d. -f3)"
+          NEXT_PATCH=$((PATCH + 1))
+          HOTFIX_VER="${MAJOR}.${MINOR}.${NEXT_PATCH}"
+          echo "tag=${HOTFIX_VER}" >> "$GITHUB_OUTPUT"
+          echo "version=${HOTFIX_VER}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+
+      - name: Compile Hotfix Binaries
+        env:
+          VER: ${{ steps.patch.outputs.version }}
+        run: |
+          mkdir -p dist
+          LDFLAGS="-s -w -X 'github.com/krewire/krew.VersionString=${VER}'"
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$LDFLAGS" -o dist/krew-linux-amd64 ./cmd/krew
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$LDFLAGS" -o dist/krew-darwin-arm64 ./cmd/krew
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$LDFLAGS" -o dist/krew-windows-amd64.exe ./cmd/krew
+          cd dist && sha256sum * > checksums.txt
+
+      - name: Tag & Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.patch.outputs.tag }}
+          name: "[HOTFIX] Krew ${{ steps.patch.outputs.version }}"
+          body: |
+            ## Emergency Hotfix — ${{ steps.patch.outputs.version }}
+            
+            **Triggered by**: `${{ github.actor }}`
+            **Branch**: `${{ github.ref_name }}`
+            **Description**: ${{ inputs.description }}
+            
+            ```
+            $(cat dist/checksums.txt)
+            ```
+          prerelease: false
+          draft: false
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

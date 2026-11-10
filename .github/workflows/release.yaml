@@ -1,0 +1,225 @@
+name: Release Pipeline (Multi-Track)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Krew AI Agent Multi-Track Release Pipeline (ADR-R7P3K)
+# Tracks: lts, stable, pre-release (rc, beta, alpha), nightly, experimental, dev
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'             # stable (GA)
+      - 'v[0-9]+.[0-9]+.[0-9]+-lts*'        # lts
+      - 'v[0-9]+.[0-9]+.[0-9]+-rc.*'        # rc
+      - 'v[0-9]+.[0-9]+.[0-9]+-beta.*'      # beta
+      - 'v[0-9]+.[0-9]+.[0-9]+-alpha.*'     # alpha
+      - 'v[0-9]+.[0-9]+.[0-9]+-nightly.*'   # nightly tag
+      - 'v[0-9]+.[0-9]+.[0-9]+-exp.*'       # experimental tag
+      - 'v[0-9]+.[0-9]+.[0-9]+-dev.*'       # dev tag
+  schedule:
+    - cron: '0 2 * * *'                      # Nightly build at 02:00 UTC
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Release track to build and publish'
+        required: true
+        type: choice
+        default: 'stable'
+        options:
+          - 'lts'
+          - 'stable'
+          - 'rc'
+          - 'beta'
+          - 'alpha'
+          - 'nightly'
+          - 'experimental'
+          - 'dev'
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-krew-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  classify:
+    name: Classify Release Track
+    runs-on: ubuntu-latest
+    outputs:
+      track: ${{ steps.meta.outputs.track }}
+      version: ${{ steps.meta.outputs.version }}
+      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+    steps:
+      - name: Parse Trigger & Track
+        id: meta
+        run: |
+          REF="${GITHUB_REF:-}"
+          EVENT="${GITHUB_EVENT_NAME}"
+          TRACK="${{ inputs.track }}"
+          
+          if [ "${EVENT}" = "schedule" ]; then
+            TRACK="nightly"
+            DATE_TAG="$(date -u +%Y%m%d)"
+            VER="v0.3.0-nightly.${DATE_TAG}"
+            PRERELEASE="true"
+          elif [[ "${REF}" == refs/tags/* ]]; then
+            TAG="${REF#refs/tags/}"
+            VER="${TAG}"
+            if [[ "${TAG}" =~ -lts ]]; then
+              TRACK="lts"
+              PRERELEASE="false"
+            elif [[ "${TAG}" =~ -rc ]]; then
+              TRACK="rc"
+              PRERELEASE="true"
+            elif [[ "${TAG}" =~ -beta ]]; then
+              TRACK="beta"
+              PRERELEASE="true"
+            elif [[ "${TAG}" =~ -alpha ]]; then
+              TRACK="alpha"
+              PRERELEASE="true"
+            elif [[ "${TAG}" =~ -nightly ]]; then
+              TRACK="nightly"
+              PRERELEASE="true"
+            elif [[ "${TAG}" =~ -exp ]]; then
+              TRACK="experimental"
+              PRERELEASE="true"
+            elif [[ "${TAG}" =~ -dev ]]; then
+              TRACK="dev"
+              PRERELEASE="true"
+            else
+              TRACK="stable"
+              PRERELEASE="false"
+            fi
+          else
+            if [ -z "${TRACK}" ]; then TRACK="dev"; fi
+            DATE_TAG="$(date -u +%Y%m%d)"
+            VER="v0.2.0-${TRACK}.${DATE_TAG}.${GITHUB_SHA::7}"
+            if [ "${TRACK}" = "stable" ] || [ "${TRACK}" = "lts" ]; then
+              PRERELEASE="false"
+            else
+              PRERELEASE="true"
+            fi
+          fi
+          
+          echo "track=${TRACK}" >> "$GITHUB_OUTPUT"
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "Krew Release Track: ${TRACK} | Version: ${VER} | Prerelease: ${PRERELEASE}"
+
+  quality-gate:
+    name: Quality Gate & Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: Formatting Check
+        run: |
+          UNFORMATTED="$(gofmt -l .)"
+          if [ -n "$UNFORMATTED" ]; then
+            echo "gofmt unformatted files: $UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Static Analysis
+        run: go vet ./...
+
+      - name: Architectural Decoupling & Layering
+        run: go test -v ./layering_test.go
+
+      - name: Unit Tests
+        run: go test -v ./...
+
+      - name: Pure-Go Compilation Invariant
+        run: CGO_ENABLED=0 go build ./...
+
+  build-binaries:
+    name: Cross-Compile krew Agent CLI
+    needs: [classify, quality-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: Compile Multi-Platform Binaries
+        env:
+          VER: ${{ needs.classify.outputs.version }}
+        run: |
+          mkdir -p dist
+          LDFLAGS="-s -w -X 'github.com/krewire/krew.VersionString=${VER}'"
+          
+          PLATFORMS=(
+            "linux/amd64/krew-linux-amd64"
+            "linux/arm64/krew-linux-arm64"
+            "darwin/amd64/krew-darwin-amd64"
+            "darwin/arm64/krew-darwin-arm64"
+            "windows/amd64/krew-windows-amd64.exe"
+          )
+          
+          for target in "${PLATFORMS[@]}"; do
+            IFS="/" read -r OS ARCH OUT <<< "$target"
+            echo "▶ Compiling ${OUT} (${OS}/${ARCH})..."
+            GOOS=$OS GOARCH=$ARCH CGO_ENABLED=0 go build -ldflags="$LDFLAGS" -o "dist/${OUT}" ./cmd/krew
+          done
+
+      - name: Checksums
+        run: |
+          cd dist && sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: krew-binaries-${{ needs.classify.outputs.version }}
+          path: dist/
+          retention-days: 7
+
+  publish-github-release:
+    name: Publish GitHub Release
+    needs: [classify, build-binaries]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: krew-binaries-${{ needs.classify.outputs.version }}
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.classify.outputs.version }}
+          name: Krew Agent Engine ${{ needs.classify.outputs.version }} [${{ needs.classify.outputs.track }}]
+          body: |
+            ## Krew Autonomous AI Agent Engine — ${{ needs.classify.outputs.version }}
+            
+            **Track**: `${{ needs.classify.outputs.track }}`
+            **Architecture Tier**: Layer 4 Platform Engine
+            
+            ### Binary Checksums (CGO_ENABLED=0 Pure Go)
+            ```
+            $(cat dist/checksums.txt)
+            ```
+          prerelease: ${{ needs.classify.outputs.is_prerelease == 'true' }}
+          draft: false
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
