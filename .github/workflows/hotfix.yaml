@@ -81,6 +81,12 @@ jobs:
         with:
           go-version: "1.27.x"
 
+      - name: Checkout Dependencies
+        run: |
+          if grep -q "replace.*../krewire" go.mod && [ ! -d "../krewire" ]; then
+            git clone --depth 1 https://github.com/krewire/krewire.git ../krewire
+          fi
+
       - name: Compile Hotfix Binaries
         env:
           VER: ${{ steps.patch.outputs.version }}
