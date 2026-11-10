@@ -19,6 +19,7 @@ func runServe(args []string) {
 	hostFlag := fs.String("host", DefaultServeHost, "Host address to listen on")
 	personaFlag := fs.String("persona", DefaultPersonaName, "Default agent persona")
 	workspaceFlag := fs.String("workspace", DefaultWorkspaceDir, "Workspace directory")
+	tokenFlag := fs.String("token", "", "Shared secret Bearer token for authentication")
 	noAuthFlag := fs.Bool("no-auth", false, "Disable authentication for local loopback development")
 	_ = fs.Parse(args)
 
@@ -33,12 +34,21 @@ func runServe(args []string) {
 		os.Exit(1)
 	}
 
-	server := transport.NewHTTPServer(inst.Agent(), transport.WithNoAuth(*noAuthFlag))
+	var opts []transport.ServerOption
+	if *noAuthFlag {
+		opts = append(opts, transport.WithNoAuth(true))
+	} else if *tokenFlag != "" {
+		opts = append(opts, transport.WithStaticToken(*tokenFlag, nil))
+	}
+
+	server := transport.NewHTTPServer(inst.Agent(), opts...)
 	addr := fmt.Sprintf("%s:%d", *hostFlag, *portFlag)
 
 	httpServer := &http.Server{
-		Addr:    addr,
-		Handler: server.Handler(),
+		Addr:              addr,
+		Handler:           server.Handler(),
+		ReadHeaderTimeout: DefaultServerReadHeaderTimeout,
+		IdleTimeout:       DefaultServerIdleTimeout,
 	}
 
 	stop := make(chan os.Signal, 1)

@@ -34,6 +34,12 @@ const (
 	// DefaultShutdownTimeout is the graceful drain timeout on SIGINT/SIGTERM.
 	DefaultShutdownTimeout = 5 * time.Second
 
+	// DefaultServerReadHeaderTimeout protects HTTP daemon against Slowloris attacks.
+	DefaultServerReadHeaderTimeout = 5 * time.Second
+
+	// DefaultServerIdleTimeout bounds idle keep-alive connections.
+	DefaultServerIdleTimeout = 60 * time.Second
+
 	// MaxToolPreviewLength bounds the terminal output snippet for tool results.
 	MaxToolPreviewLength = 120
 )

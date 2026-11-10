@@ -148,3 +148,60 @@ func TestHTTPServer_OversizedBodyRejected(t *testing.T) {
 		t.Fatalf("expected status 413 Payload Too Large, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestHTTPServer_SecurityHeaders(t *testing.T) {
+	ag := setupTestAgent()
+	srv := transport.NewHTTPServer(ag, transport.WithNoAuth(true))
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rec, req)
+
+	if val := rec.Header().Get("X-Content-Type-Options"); val != "nosniff" {
+		t.Errorf("expected X-Content-Type-Options 'nosniff', got %q", val)
+	}
+	if val := rec.Header().Get("X-Frame-Options"); val != "DENY" {
+		t.Errorf("expected X-Frame-Options 'DENY', got %q", val)
+	}
+	if val := rec.Header().Get("Referrer-Policy"); val != "strict-origin-when-cross-origin" {
+		t.Errorf("expected Referrer-Policy 'strict-origin-when-cross-origin', got %q", val)
+	}
+}
+
+func TestHTTPServer_StaticToken(t *testing.T) {
+	ag := setupTestAgent()
+	srv := transport.NewHTTPServer(ag, transport.WithStaticToken("secret-token-42", nil))
+
+	// 1. Missing header -> 401
+	{
+		req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(`{"prompt":"hi"}`))
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401 for missing token, got %d", rec.Code)
+		}
+	}
+
+	// 2. Wrong token -> 401
+	{
+		req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(`{"prompt":"hi"}`))
+		req.Header.Set("Authorization", "Bearer wrong-token")
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401 for wrong token, got %d", rec.Code)
+		}
+	}
+
+	// 3. Correct token -> 200
+	{
+		req := httptest.NewRequest(http.MethodPost, "/api/agent/run", strings.NewReader(`{"prompt":"hi"}`))
+		req.Header.Set("Authorization", "Bearer secret-token-42")
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200 for valid token, got %d: %s", rec.Code, rec.Body.String())
+		}
+	}
+}

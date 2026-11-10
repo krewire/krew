@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -90,6 +91,38 @@ func (v *SessionStoreVerifier) VerifyToken(ctx context.Context, token string) (*
 	return sess, nil
 }
 
+// StaticTokenVerifier validates a bearer token against an expected secret using constant-time comparison.
+type StaticTokenVerifier struct {
+	ExpectedToken string
+	Session       *Session
+}
+
+// NewStaticTokenVerifier creates a verifier that validates bearer tokens against expectedToken using subtle.ConstantTimeCompare.
+func NewStaticTokenVerifier(expectedToken string, session *Session) *StaticTokenVerifier {
+	if session == nil {
+		session = &Session{
+			ID:       "static-session",
+			UserID:   "admin",
+			TenantID: "default",
+			Roles:    []string{"admin"},
+		}
+	}
+	return &StaticTokenVerifier{
+		ExpectedToken: expectedToken,
+		Session:       session,
+	}
+}
+
+func (v *StaticTokenVerifier) VerifyToken(_ context.Context, token string) (*Session, error) {
+	if v.ExpectedToken == "" {
+		return nil, errors.New("empty static token configured")
+	}
+	if subtle.ConstantTimeCompare([]byte(token), []byte(v.ExpectedToken)) != 1 {
+		return nil, errors.New("invalid static bearer token")
+	}
+	return v.Session, nil
+}
+
 // DefaultMaxBodySize is the default ceiling for incoming request bodies (1MB).
 const DefaultMaxBodySize int64 = 1 << 20
 
@@ -134,6 +167,13 @@ func WithSessionStore(store SessionStore) ServerOption {
 	return func(s *HTTPServer) { s.verifier = &SessionStoreVerifier{Store: store} }
 }
 
+// WithStaticToken configures a static bearer token verifier with constant-time comparison.
+func WithStaticToken(token string, session *Session) ServerOption {
+	return func(s *HTTPServer) {
+		s.verifier = NewStaticTokenVerifier(token, session)
+	}
+}
+
 // WithNoAuth bypasses token authentication for local development and loopback usage.
 func WithNoAuth(noAuth bool) ServerOption {
 	return func(s *HTTPServer) { s.noAuth = noAuth }
@@ -167,9 +207,14 @@ func NewHTTPServer(ag *agent.Agent, opts ...ServerOption) *HTTPServer {
 	return s
 }
 
-// Handler returns the underlying http.Handler.
+// Handler returns the underlying http.Handler wrapped with baseline defense-in-depth security headers.
 func (s *HTTPServer) Handler() http.Handler {
-	return s.mux
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		s.mux.ServeHTTP(w, r)
+	})
 }
 
 func (s *HTTPServer) routes() {
