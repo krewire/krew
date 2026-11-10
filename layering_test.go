@@ -76,3 +76,49 @@ func TestLayering(t *testing.T) {
 		t.Fatalf("failed walking pkg directory: %v", err)
 	}
 }
+
+// TestPeerPlatformDecoupling enforces Zero Peer Coupling (Lateral Independence).
+// Sibling platforms at Layer 4 (cloud, forge, auth, krew) and Layer 5 (dash)
+// must never import source code or private packages of peer platforms directly.
+func TestPeerPlatformDecoupling(t *testing.T) {
+	root := repoDir(t)
+	fset := token.NewFileSet()
+
+	bannedPeerPrefixes := []string{
+		"github.com/krewire/cloud",
+		"github.com/krewire/forge",
+		"github.com/krewire/auth",
+		"github.com/krewire/dash",
+	}
+
+	for _, scanDir := range []string{"pkg", "cmd"} {
+		dirPath := filepath.Join(root, scanDir)
+		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+			continue
+		}
+		err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
+				return err
+			}
+			rel, _ := filepath.Rel(root, path)
+
+			node, parseErr := parser.ParseFile(fset, path, nil, parser.ImportsOnly)
+			if parseErr != nil {
+				t.Fatalf("failed to parse %s: %v", path, parseErr)
+			}
+
+			for _, imp := range node.Imports {
+				val, _ := strconv.Unquote(imp.Path.Value)
+				for _, banned := range bannedPeerPrefixes {
+					if strings.HasPrefix(val, banned) {
+						t.Errorf("zero peer coupling violation in %s: krew must not import sibling platform %q", rel, val)
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("failed walking %s directory: %v", scanDir, err)
+		}
+	}
+}
