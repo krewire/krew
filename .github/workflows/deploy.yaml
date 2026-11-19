@@ -1,4 +1,4 @@
-name: Deploy Pipeline (Multi-Environment)
+name: Deploy Pipeline
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Krew Multi-Environment Deployment Pipeline (ADR-R7P3K)
@@ -11,7 +11,7 @@ name: Deploy Pipeline (Multi-Environment)
 
 on:
   workflow_run:
-    workflows: ["Release Pipeline (Multi-Track)", "Hotfix Pipeline (Fast-Track)"]
+    workflows: ["Release Pipeline"]
     types: [completed]
   workflow_dispatch:
     inputs:
