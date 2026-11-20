@@ -78,7 +78,7 @@ func TestLayering(t *testing.T) {
 }
 
 // TestPeerPlatformDecoupling enforces Zero Peer Coupling (Lateral Independence).
-// Sibling platforms at Layer 4 (cloud, forge, auth, krew) and Layer 5 (dash)
+// Sibling platforms at Layer 4 (cloud, auth, krew) and Layer 5 (dash)
 // must never import source code or private packages of peer platforms directly.
 func TestPeerPlatformDecoupling(t *testing.T) {
 	root := repoDir(t)
@@ -86,7 +86,6 @@ func TestPeerPlatformDecoupling(t *testing.T) {
 
 	bannedPeerPrefixes := []string{
 		"github.com/krewire/cloud",
-		"github.com/krewire/forge",
 		"github.com/krewire/auth",
 		"github.com/krewire/dash",
 	}

@@ -1,7 +1,7 @@
 # Krew — Platform-Agnostic Autonomous AI Agent
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/krewire/krew.svg)](https://pkg.go.dev/github.com/krewire/krew)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
 **Krew** is an autonomous, platform-agnostic AI agent engine designed to be embedded **literally anywhere**:
 - In-process inside **Krewire Boost** or custom Go microservices.
@@ -198,5 +198,7 @@ For quarterly ecosystem milestones, see [Quarterly Roadmaps](../internal/docs/ro
 
 ## License
 
-Krew is open source software licensed under the [MIT License](LICENSE).
-Part of the [Krewire](https://krewire.com) ecosystem.
+Krew is proprietary and confidential commercial software.  
+Copyright (c) 2026 Krewire. All rights reserved.  
+Unauthorized copying, reverse engineering, or redistribution is strictly prohibited.  
+See [LICENSE](LICENSE) for full terms.
