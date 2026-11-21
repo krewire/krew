@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"sync"
+
+	"github.com/krewire/krewire/pkg/boost"
 )
 
 // Persona represents an agent role with specialized instructions and behavior.
@@ -172,15 +174,50 @@ var (
 	registry = make(map[string]Persona)
 )
 
-// All returns a slice of all built-in and registered personas.
+func boostToPersona(bp *boost.Persona) Persona {
+	var tools []string
+	if bp.Tools != "" {
+		for _, t := range strings.Split(bp.Tools, ",") {
+			trimmed := strings.TrimSpace(t)
+			if trimmed != "" {
+				tools = append(tools, trimmed)
+			}
+		}
+	}
+	instr := bp.Instructions
+	if instr == "" {
+		instr = bp.Description
+	}
+	return Persona{
+		Name:         bp.Name,
+		Description:  bp.Description,
+		Instructions: instr,
+		DefaultTools: tools,
+	}
+}
+
+// All returns a slice of all built-in, boost, and registered personas.
 func All() []Persona {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	result := make([]Persona, 0, len(builtins)+len(registry))
-	result = append(result, builtins...)
-	for _, p := range registry {
+	seen := make(map[string]bool)
+	result := make([]Persona, 0, len(builtins)+len(registry)+25)
+	for _, p := range builtins {
 		result = append(result, p)
+		seen[p.Name] = true
+	}
+	for _, p := range registry {
+		if !seen[p.Name] {
+			result = append(result, p)
+			seen[p.Name] = true
+		}
+	}
+	for _, bp := range boost.DefaultRegistry().List() {
+		if !seen[bp.Name] {
+			result = append(result, boostToPersona(bp))
+			seen[bp.Name] = true
+		}
 	}
 	return result
 }
@@ -226,9 +263,15 @@ func Lookup(name string) (Persona, bool) {
 
 	// 2. Custom registry lookup
 	mu.RLock()
-	defer mu.RUnlock()
-	if p, ok := registry[norm]; ok {
+	p, ok := registry[norm]
+	mu.RUnlock()
+	if ok {
 		return p, true
+	}
+
+	// 3. Canonical Boost personas lookup
+	if bp, found := boost.DefaultRegistry().Lookup(norm); found {
+		return boostToPersona(bp), true
 	}
 
 	return Persona{}, false

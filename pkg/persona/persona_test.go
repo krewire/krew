@@ -54,6 +54,12 @@ func TestLookup_BuiltinsAndAliases(t *testing.T) {
 		{"verifier", "sdlc-verifier", true},
 		{"sdlc-reviewer", "sdlc-reviewer", true},
 		{"reviewer", "sdlc-reviewer", true},
+		// Boost canonical personas and aliases
+		{"auditor", "auditor", true},
+		{"builder", "builder", true},
+		{"thinker", "thinker", true},
+		{"tester", "tester", true},
+		{"architect", "designer", true},
 		{"non-existent", "", false},
 		{"", "", false},
 	}
