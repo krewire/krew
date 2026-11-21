@@ -151,7 +151,7 @@ Krew includes a deterministic, policy-gated SDLC workflow engine (`pkg/sdlc`):
 - **Structured Task Briefs**: Tasks specify objective, allowed repository scope, constraints, and verification commands.
 - **Stage Progression**: `understand` ──► `plan` ──► `implement` ──► `verify` ──► `review` ──► `report`.
 - **Scope Restriction**: File mutations outside `TaskBrief.Scope` are rejected.
-- **Deterministic Verification**: Tasks require reproducible check commands (`go test`, `kiw verify`, etc.) and fail closed on test errors.
+- **Deterministic Verification**: Tasks require reproducible check commands (`go test`, `krew verify`, etc.) and fail closed on test errors.
 - **Human Review & Approval**: Interactive gates for plan approval, high-risk tools, and change review.
 
 See [docs/sdlc-workflows.md](docs/sdlc-workflows.md) for full architecture and usage guides.
