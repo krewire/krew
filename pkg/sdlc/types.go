@@ -62,6 +62,51 @@ type TaskBrief struct {
 	MaxRetries           int           `json:"max_retries,omitempty"`
 }
 
+// ToModel converts the TaskBrief to the canonical model.TaskBrief.
+func (b TaskBrief) ToModel() model.TaskBrief {
+	timeoutSec := int(b.Timeout.Seconds())
+	if timeoutSec <= 0 {
+		timeoutSec = 600
+	}
+	return model.TaskBrief{
+		ID:                   b.ID,
+		Title:                b.Title,
+		Objective:            b.Objective,
+		Repository:           b.Repository,
+		Scope:                b.Scope,
+		Constraints:          b.Constraints,
+		AcceptanceCriteria:   b.AcceptanceCriteria,
+		VerificationCommands: b.VerificationCommands,
+		MaxAutonomy:          model.AutonomyAutonomous,
+		RequirePlan:          b.RequirePlan,
+		RequireReview:        b.RequireReview,
+		TimeoutSec:           timeoutSec,
+		MaxRetries:           b.MaxRetries,
+	}
+}
+
+// FromModelBrief converts a canonical model.TaskBrief to an SDLC TaskBrief.
+func FromModelBrief(m model.TaskBrief) TaskBrief {
+	timeout := time.Duration(m.TimeoutSec) * time.Second
+	if timeout <= 0 {
+		timeout = 10 * time.Minute
+	}
+	return TaskBrief{
+		ID:                   m.ID,
+		Title:                m.Title,
+		Objective:            m.Objective,
+		Repository:           m.Repository,
+		Scope:                m.Scope,
+		Constraints:          m.Constraints,
+		AcceptanceCriteria:   m.AcceptanceCriteria,
+		VerificationCommands: m.VerificationCommands,
+		RequirePlan:          m.RequirePlan,
+		RequireReview:        m.RequireReview,
+		Timeout:              timeout,
+		MaxRetries:           m.MaxRetries,
+	}
+}
+
 // PlanStep defines an atomic action in an SDLC execution plan.
 type PlanStep struct {
 	ID          string   `json:"id"`
@@ -77,6 +122,38 @@ type Plan struct {
 	Approved   bool       `json:"approved"`
 	ApprovedBy string     `json:"approved_by,omitempty"`
 	ApprovedAt time.Time  `json:"approved_at,omitempty"`
+}
+
+// ToModel converts the Plan to the canonical model.TaskPlan.
+func (p Plan) ToModel() model.TaskPlan {
+	steps := make([]model.PlanStep, len(p.Steps))
+	for i, s := range p.Steps {
+		steps[i] = model.PlanStep{
+			ID:          s.ID,
+			Description: s.Description,
+			TargetFiles: s.TargetFiles,
+			RiskLevel:   s.RiskLevel,
+		}
+	}
+	return model.TaskPlan{
+		Steps: steps,
+	}
+}
+
+// FromModelPlan converts a canonical model.TaskPlan to an SDLC Plan.
+func FromModelPlan(m model.TaskPlan) Plan {
+	steps := make([]PlanStep, len(m.Steps))
+	for i, s := range m.Steps {
+		steps[i] = PlanStep{
+			ID:          s.ID,
+			Description: s.Description,
+			TargetFiles: s.TargetFiles,
+			RiskLevel:   s.RiskLevel,
+		}
+	}
+	return Plan{
+		Steps: steps,
+	}
 }
 
 // VerificationResult captures deterministic test or check execution outcomes.

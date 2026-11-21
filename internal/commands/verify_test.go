@@ -105,3 +105,51 @@ func TestVerifyCommand_FailsOnUnformattedCode(t *testing.T) {
 		t.Errorf("expected fmt gate to fail: %s", out)
 	}
 }
+
+func TestVerifyCommand_LedgerIntegration(t *testing.T) {
+	dir := t.TempDir()
+
+	// Clean module
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/ledgerproj\ngo 1.22\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	code := "package ledgerproj\n\n// Hello returns greeting.\nfunc Hello() string {\n\treturn \"hi\"\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "hello.go"), []byte(code), 0644); err != nil {
+		t.Fatal(err)
+	}
+	testCode := "package ledgerproj\n\nimport \"testing\"\n\nfunc TestHello(t *testing.T) {\n\tif Hello() != \"hi\" {\n\t\tt.Fail()\n\t}\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "hello_test.go"), []byte(testCode), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	origWd, _ := os.Getwd()
+	defer os.Chdir(origWd)
+	_ = os.Chdir(dir)
+
+	ledgerFile := filepath.Join(dir, ".krewire", "ledger.json")
+
+	// Run verify with --ledger
+	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
+	RegisterVerify(fs)
+	_ = fs.Parse([]string{"--task", "task-ledger-1", "--ledger", ledgerFile})
+
+	exitCode := RunVerify(fs)
+	if exitCode != errs.ExitCodeSuccess {
+		t.Fatalf("expected verify with --ledger to succeed, got %v", exitCode)
+	}
+
+	// Verify ledger file was written
+	if _, err := os.Stat(ledgerFile); err != nil {
+		t.Fatalf("expected ledger file at %s, got: %v", ledgerFile, err)
+	}
+
+	// Run verify --verify-ledger
+	fsCheck := flag.NewFlagSet("verify", flag.ContinueOnError)
+	RegisterVerify(fsCheck)
+	_ = fsCheck.Parse([]string{"--verify-ledger", "--ledger", ledgerFile})
+
+	checkCode := RunVerify(fsCheck)
+	if checkCode != errs.ExitCodeSuccess {
+		t.Fatalf("expected --verify-ledger to succeed, got %v", checkCode)
+	}
+}

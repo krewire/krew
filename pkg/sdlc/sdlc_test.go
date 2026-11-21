@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/krewire/krew/pkg/agent"
 )
@@ -303,5 +304,66 @@ func TestWorkflow_VerificationLedgerIntegrity(t *testing.T) {
 	}
 	if !latest.AllPassed {
 		t.Errorf("expected all passed in latest block")
+	}
+}
+
+func TestSDLC_ModelConversions(t *testing.T) {
+	brief := TaskBrief{
+		ID:                   "TASK-42",
+		Title:                "Test Task",
+		Objective:            "Objective text",
+		Repository:           "krew",
+		Scope:                []string{"pkg/sdlc"},
+		Constraints:          []string{"pure-go"},
+		AcceptanceCriteria:   []string{"tests pass"},
+		VerificationCommands: []string{"go test ./..."},
+		RequirePlan:          true,
+		RequireReview:        true,
+		Timeout:              5 * time.Minute,
+		MaxRetries:           3,
+	}
+
+	modelBrief := brief.ToModel()
+	if modelBrief.ID != brief.ID {
+		t.Errorf("expected ID %s, got %s", brief.ID, modelBrief.ID)
+	}
+	if len(modelBrief.Scope) != len(brief.Scope) {
+		t.Errorf("expected %d scope paths, got %d", len(brief.Scope), len(modelBrief.Scope))
+	}
+
+	roundtripBrief := FromModelBrief(modelBrief)
+	if roundtripBrief.ID != brief.ID {
+		t.Errorf("expected roundtrip ID %s, got %s", brief.ID, roundtripBrief.ID)
+	}
+	if roundtripBrief.Timeout != brief.Timeout {
+		t.Errorf("expected roundtrip timeout %v, got %v", brief.Timeout, roundtripBrief.Timeout)
+	}
+
+	plan := Plan{
+		Summary: "Test plan summary",
+		Steps: []PlanStep{
+			{
+				ID:          "step-1",
+				Description: "Create file",
+				TargetFiles: []string{"pkg/test.go"},
+				RiskLevel:   "low",
+			},
+		},
+	}
+
+	modelPlan := plan.ToModel()
+	if len(modelPlan.Steps) != 1 {
+		t.Fatalf("expected 1 step in model plan, got %d", len(modelPlan.Steps))
+	}
+	if modelPlan.Steps[0].ID != "step-1" {
+		t.Errorf("expected step ID step-1, got %s", modelPlan.Steps[0].ID)
+	}
+
+	roundtripPlan := FromModelPlan(modelPlan)
+	if len(roundtripPlan.Steps) != 1 {
+		t.Fatalf("expected 1 step in roundtrip plan, got %d", len(roundtripPlan.Steps))
+	}
+	if roundtripPlan.Steps[0].ID != "step-1" {
+		t.Errorf("expected roundtrip step ID step-1, got %s", roundtripPlan.Steps[0].ID)
 	}
 }
