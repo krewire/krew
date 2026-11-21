@@ -91,12 +91,18 @@ func registerAgentFlags(fs *flag.FlagSet) {
 	fs.String("workspace", DefaultWorkspaceDir, "Workspace directory")
 	fs.String("model", "", "Model override")
 	fs.Int("max-steps", DefaultMaxSteps, "Maximum steps per prompt")
+	fs.String("brief", "", "Path to markdown Task Brief file or GitHub issue")
+	fs.Bool("sdlc", false, "Execute governed SDLC workflow (Understand -> Plan -> Implement -> Verify -> Review -> Report)")
 }
 
 func runAgentCmd(fs *flag.FlagSet) errs.ExitCode {
+	briefVal := ""
+	if f := fs.Lookup("brief"); f != nil {
+		briefVal = f.Value.String()
+	}
 	remaining := fs.Args()
-	if len(remaining) == 0 {
-		fmt.Fprintln(os.Stderr, "error: prompt or task required for 'krew agent'")
+	if len(remaining) == 0 && briefVal == "" {
+		fmt.Fprintln(os.Stderr, "error: prompt or --brief required for 'krew agent'")
 		return errs.ExitCodeUsage
 	}
 	runSingleShot(flagArgs(fs))
