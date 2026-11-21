@@ -1,0 +1,5 @@
+.krewire/
+bin/
+dist/
+*.exe
+*.test

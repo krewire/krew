@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "@capybearista/opencode-agents-loader"
+  ],
+  "default_agent": "builder",
+  "mcp": {
+    "krewire": {
+      "command": "kiw",
+      "args": ["mcp", "--stdio"]
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": {
+      "git *": "allow",
+      "*": "ask"
+    },
+    "webfetch": "ask",
+    "websearch": "ask"
+  },
+  "instructions": ["AGENTS.md"]
+}

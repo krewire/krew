@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://krewire.com/schemas/krewire.json
+project:
+  name: {{.Name}}
+  kind: site
+  version: 0.1.0
+
+build:
+  output: .krewire/build
+  base: /
+
+dev:
+  port: 8080

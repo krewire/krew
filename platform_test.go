@@ -1,6 +1,9 @@
 package krew_test
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -43,5 +46,36 @@ func TestPlatform_CrossCompileCLI(t *testing.T) {
 				t.Fatalf("cross-compile krew for %s/%s failed: %v\nOutput: %s", tgt.goos, tgt.goarch, err, string(out))
 			}
 		})
+	}
+}
+
+// Automated verification that consecutive clean builds produce bitwise identical binaries.
+func TestPlatform_BitwiseReproducibility(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping bitwise reproducibility test in short mode")
+	}
+	tmpDir := t.TempDir()
+	bin1 := filepath.Join(tmpDir, "krew-1")
+	bin2 := filepath.Join(tmpDir, "krew-2")
+
+	build := func(out string) []byte {
+		cmd := exec.Command("go", "build", "-trimpath", "-ldflags=-s -w", "-o", out, "./cmd/krew")
+		cmd.Dir = repoDir(t)
+		cmd.Env = append(cmd.Environ(), "CGO_ENABLED=0")
+		if outLog, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("build failed: %v\nOutput: %s", err, string(outLog))
+		}
+		data, err := os.ReadFile(out)
+		if err != nil {
+			t.Fatalf("read binary: %v", err)
+		}
+		sum := sha256.Sum256(data)
+		return sum[:]
+	}
+
+	h1 := build(bin1)
+	h2 := build(bin2)
+	if !bytes.Equal(h1, h2) {
+		t.Fatalf("builds are not bitwise reproducible: %x != %x", h1, h2)
 	}
 }

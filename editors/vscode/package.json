@@ -1,0 +1,36 @@
+{
+  "name": "kiw",
+  "displayName": "Krewire .kiw",
+  "description": "Syntax highlighting and bracket matching for Krewire .kiw single-file components",
+  "version": "0.1.0",
+  "publisher": "krewire",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/krewire/krewire", "directory": "tools/kiw/editors/vscode" },
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "kiw",
+        "aliases": ["Krewire kiw", "kiw"],
+        "extensions": [".kiw"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "kiw",
+        "scopeName": "text.html.kiw",
+        "path": "./syntaxes/kiw.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.yaml": "yaml",
+          "source.css": "css",
+          "source.js": "javascript",
+          "source.ts": "typescript",
+          "text.html.markdown": "markdown",
+          "meta.embedded.template.go.kiw": "go"
+        }
+      }
+    ]
+  }
+}

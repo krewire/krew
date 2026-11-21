@@ -90,7 +90,7 @@ func TestPeerPlatformDecoupling(t *testing.T) {
 		"github.com/krewire/dash",
 	}
 
-	for _, scanDir := range []string{"pkg", "cmd"} {
+	for _, scanDir := range []string{"pkg", "cmd", "internal"} {
 		dirPath := filepath.Join(root, scanDir)
 		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 			continue

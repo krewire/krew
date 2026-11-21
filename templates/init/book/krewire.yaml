@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://krewire.com/schemas/krewire.json
+project:
+  name: {{.Name}}
+  kind: book
+  version: 0.1.0
+
+title: {{.Name}}
+author: ""
+input: content
+
+build:
+  base: /

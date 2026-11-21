@@ -1,0 +1,143 @@
+package ecosystem
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestDetectHost_NodeJS(t *testing.T) {
+	dir := t.TempDir()
+
+	pkgJSON := `{
+		"name": "my-svelte-app",
+		"dependencies": {
+			"@sveltejs/kit": "^2.0.0"
+		}
+	}`
+	if err := os.WriteFile(filepath.Join(dir, ManifestPackageJSON), []byte(pkgJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pnpm-lock.yaml"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	host := DetectHost(dir)
+	if host == nil {
+		t.Fatal("expected host to be detected")
+	}
+	if host.Type != HostNodeJS {
+		t.Errorf("expected type %q, got %q", HostNodeJS, host.Type)
+	}
+	if host.Name != "my-svelte-app" {
+		t.Errorf("expected name %q, got %q", "my-svelte-app", host.Name)
+	}
+	if host.PackageManager != "pnpm" {
+		t.Errorf("expected pnpm, got %q", host.PackageManager)
+	}
+	if host.Framework != "SvelteKit" {
+		t.Errorf("expected SvelteKit, got %q", host.Framework)
+	}
+	if host.DisplayTitle() != "Node.js" {
+		t.Errorf("expected Node.js, got %q", host.DisplayTitle())
+	}
+}
+
+func TestDetectHost_Laravel(t *testing.T) {
+	dir := t.TempDir()
+
+	compJSON := `{
+		"name": "laravel/laravel",
+		"require": {
+			"php": "^8.2",
+			"laravel/framework": "^11.0"
+		}
+	}`
+	if err := os.WriteFile(filepath.Join(dir, ManifestComposerJSON), []byte(compJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, FileArtisan), []byte("#!/usr/bin/env php\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	host := DetectHost(dir)
+	if host == nil {
+		t.Fatal("expected host to be detected")
+	}
+	if host.Type != HostLaravel {
+		t.Errorf("expected type %q, got %q", HostLaravel, host.Type)
+	}
+	if host.Framework != "Laravel" {
+		t.Errorf("expected framework Laravel, got %q", host.Framework)
+	}
+	if host.PackageManager != "composer" {
+		t.Errorf("expected composer, got %q", host.PackageManager)
+	}
+	if host.DisplayTitle() != "Laravel" {
+		t.Errorf("expected Laravel, got %q", host.DisplayTitle())
+	}
+}
+
+func TestFindColocated(t *testing.T) {
+	dir := t.TempDir()
+
+	// 1. Host project files
+	if err := os.WriteFile(filepath.Join(dir, ManifestPackageJSON), []byte(`{"name":"host"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 2. Co-located Krewire service in api/
+	apiDir := filepath.Join(dir, "api")
+	if err := os.MkdirAll(apiDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(apiDir, "go.mod"), []byte("module myapp/api\n\ngo 1.27.1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(apiDir, "main.go"), []byte("package main\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 3. node_modules should be ignored
+	nmDir := filepath.Join(dir, "node_modules", "somepkg")
+	if err := os.MkdirAll(nmDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nmDir, "go.mod"), []byte("module fake\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	colocated := FindColocated(dir)
+	if len(colocated) != 1 {
+		t.Fatalf("expected 1 colocated project, got %d", len(colocated))
+	}
+	if colocated[0].Name != "api" {
+		t.Errorf("expected name api, got %q", colocated[0].Name)
+	}
+	if colocated[0].Kind != "app" {
+		t.Errorf("expected kind app, got %q", colocated[0].Kind)
+	}
+	if colocated[0].ModulePath != "myapp/api" {
+		t.Errorf("expected module myapp/api, got %q", colocated[0].ModulePath)
+	}
+}
+
+func TestDetectHost_SvelteAndVue(t *testing.T) {
+	// 1. Svelte (Vite + Svelte)
+	dirSvelte := t.TempDir()
+	pkgSvelte := `{"name": "svelte-app", "dependencies": {"svelte": "^5.0.0"}}`
+	_ = os.WriteFile(filepath.Join(dirSvelte, ManifestPackageJSON), []byte(pkgSvelte), 0o644)
+	hostSvelte := DetectHost(dirSvelte)
+	if hostSvelte == nil || hostSvelte.Framework != "Svelte" {
+		t.Errorf("expected Svelte framework, got %+v", hostSvelte)
+	}
+
+	// 2. Vue (Vite + Vue)
+	dirVue := t.TempDir()
+	pkgVue := `{"name": "vue-app", "dependencies": {"vue": "^3.5.0"}}`
+	_ = os.WriteFile(filepath.Join(dirVue, ManifestPackageJSON), []byte(pkgVue), 0o644)
+	hostVue := DetectHost(dirVue)
+	if hostVue == nil || hostVue.Framework != "Vue" {
+		t.Errorf("expected Vue framework, got %+v", hostVue)
+	}
+}

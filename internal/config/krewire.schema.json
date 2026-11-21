@@ -1,0 +1,837 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://krewire.com/schemas/krewire.json",
+  "title": "krewire.yaml",
+  "description": "Project configuration read by the krew CLI (build, dev, run, serve, deploy) and the Krewire runtimes.",
+  "type": "object",
+  "additionalProperties": false,
+  "definitions": {
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "palette": {
+      "type": "object",
+      "description": "Color token overrides; empty tokens fall back to the kui defaults.",
+      "additionalProperties": false,
+      "properties": {
+        "base-1": {
+          "type": "string",
+          "description": "CSS color for the base-1 token."
+        },
+        "base-1-content": {
+          "type": "string",
+          "description": "CSS color for the base-1-content token."
+        },
+        "base-2": {
+          "type": "string",
+          "description": "CSS color for the base-2 token."
+        },
+        "base-2-content": {
+          "type": "string",
+          "description": "CSS color for the base-2-content token."
+        },
+        "base-3": {
+          "type": "string",
+          "description": "CSS color for the base-3 token."
+        },
+        "base-3-content": {
+          "type": "string",
+          "description": "CSS color for the base-3-content token."
+        },
+        "primary": {
+          "type": "string",
+          "description": "CSS color for the primary token."
+        },
+        "primary-content": {
+          "type": "string",
+          "description": "CSS color for the primary-content token."
+        },
+        "secondary": {
+          "type": "string",
+          "description": "CSS color for the secondary token."
+        },
+        "secondary-content": {
+          "type": "string",
+          "description": "CSS color for the secondary-content token."
+        },
+        "accent": {
+          "type": "string",
+          "description": "CSS color for the accent token."
+        },
+        "accent-content": {
+          "type": "string",
+          "description": "CSS color for the accent-content token."
+        },
+        "ghost": {
+          "type": "string",
+          "description": "CSS color for the ghost token."
+        },
+        "ghost-content": {
+          "type": "string",
+          "description": "CSS color for the ghost-content token."
+        },
+        "neutral": {
+          "type": "string",
+          "description": "CSS color for the neutral token."
+        },
+        "neutral-content": {
+          "type": "string",
+          "description": "CSS color for the neutral-content token."
+        },
+        "success": {
+          "type": "string",
+          "description": "CSS color for the success token."
+        },
+        "success-content": {
+          "type": "string",
+          "description": "CSS color for the success-content token."
+        },
+        "info": {
+          "type": "string",
+          "description": "CSS color for the info token."
+        },
+        "info-content": {
+          "type": "string",
+          "description": "CSS color for the info-content token."
+        },
+        "warning": {
+          "type": "string",
+          "description": "CSS color for the warning token."
+        },
+        "warning-content": {
+          "type": "string",
+          "description": "CSS color for the warning-content token."
+        },
+        "error": {
+          "type": "string",
+          "description": "CSS color for the error token."
+        },
+        "error-content": {
+          "type": "string",
+          "description": "CSS color for the error-content token."
+        }
+      }
+    },
+    "autoAssets": {
+      "type": "object",
+      "description": "Automatic CSS/JS injection into every rendered page.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Inject asset tags. Unset means enabled.",
+          "default": true
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Asset names, base names or globs never injected, e.g. \"*.min.css\".",
+          "items": {
+            "type": "string"
+          }
+        },
+        "js_placement": {
+          "type": "string",
+          "description": "Where injected scripts go.",
+          "enum": [
+            "head",
+            "body"
+          ],
+          "default": "head"
+        },
+        "order": {
+          "type": "object",
+          "description": "Pin the load position of individual assets, keyed by asset path or base name.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "Load position of one asset.",
+            "additionalProperties": false,
+            "properties": {
+              "layer": {
+                "type": "string",
+                "description": "Cascade layer name."
+              },
+              "order": {
+                "type": "integer",
+                "description": "Tie-breaker inside the layer; lower loads first."
+              }
+            }
+          }
+        },
+        "bundle": {
+          "type": "boolean",
+          "description": "Bundle eligible CSS and JS into assets/krewire.css and assets/krewire.js.",
+          "default": false
+        }
+      }
+    },
+    "link": {
+      "type": "object",
+      "description": "A navigation link.",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Link label."
+        },
+        "url": {
+          "type": "string",
+          "description": "Link target."
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "description": "A declared service.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Service name."
+        },
+        "host": {
+          "type": "string",
+          "description": "Bind host, e.g. 0.0.0.0."
+        },
+        "port": {
+          "$ref": "#/definitions/port",
+          "description": "Service port."
+        }
+      }
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "URL of this JSON Schema, for editors that read a $schema key."
+    },
+    "name": {
+      "type": "string",
+      "description": "Project name. Defaults to project.name, then title."
+    },
+    "project": {
+      "type": "object",
+      "description": "Project identity and layout.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Pins the workload kind; empty lets krew detect it from marker files.",
+          "enum": [
+            "app",
+            "cli",
+            "site",
+            "book",
+            "worker",
+            "service",
+            "gateway",
+            "infra"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "description": "Product version, exposed to pages as .Version.",
+          "examples": [
+            "v0.1.0",
+            "0.1.0"
+          ]
+        },
+        "author": {
+          "type": "string",
+          "description": "Project author or team."
+        },
+        "description": {
+          "type": "string",
+          "description": "One-line project description."
+        },
+        "dirs": {
+          "type": "object",
+          "description": "Overrides of the canonical directory locations.",
+          "additionalProperties": false,
+          "properties": {
+            "web": {
+              "type": "string",
+              "description": "Web assets directory."
+            },
+            "public": {
+              "type": "string",
+              "description": "Public static files directory."
+            },
+            "internal": {
+              "type": "string",
+              "description": "Internal Go packages directory."
+            },
+            "cmd": {
+              "type": "string",
+              "description": "Commands directory."
+            }
+          }
+        }
+      }
+    },
+    "env": {
+      "type": "string",
+      "description": "Target environment. KIW_ENV and --env override it.",
+      "enum": [
+        "local",
+        "production",
+        "testing"
+      ],
+      "default": "local"
+    },
+    "debug": {
+      "type": "boolean",
+      "description": "Enable debug mode. KIW_DEBUG and --debug override it.",
+      "default": false
+    },
+    "title": {
+      "type": "string",
+      "description": "Site title."
+    },
+    "description": {
+      "type": "string",
+      "description": "Site description, injected into page data and meta tags."
+    },
+    "author": {
+      "type": "string",
+      "description": "Site author."
+    },
+    "base": {
+      "type": "string",
+      "description": "Legacy URL base; use build.base.",
+      "deprecated": true,
+      "deprecationMessage": "Use build.base instead.",
+      "x-replacement": "build.base"
+    },
+    "version": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "description": "Product version; overrides project.version.",
+      "examples": [
+        "v0.1.0",
+        "0.1.0"
+      ]
+    },
+    "input": {
+      "type": "string",
+      "description": "Content directory relative to the project root.",
+      "default": "content",
+      "x-aliases": [
+        "content",
+        "src",
+        "source",
+        "input_dir"
+      ]
+    },
+    "output": {
+      "type": "string",
+      "description": "Output directory relative to the project root.",
+      "default": ".krewire/build",
+      "x-aliases": [
+        "outdir",
+        "out",
+        "out_dir",
+        "output_dir",
+        "outputDir",
+        "dist",
+        "dest"
+      ]
+    },
+    "build": {
+      "type": "object",
+      "description": "Build pipeline settings.",
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string",
+          "description": "URL base the site is served under, e.g. /docs/.",
+          "default": "/"
+        },
+        "output": {
+          "type": "string",
+          "description": "Output directory relative to the project root.",
+          "default": ".krewire/build",
+          "x-aliases": [
+            "outdir",
+            "out",
+            "out_dir",
+            "output_dir",
+            "dist",
+            "dest"
+          ]
+        },
+        "include": {
+          "type": "array",
+          "description": "Content globs to build (** crosses directories). Unset builds **/*.md.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Content globs removed after include filtering.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "depends_on": {
+          "type": "array",
+          "description": "Shell commands run in order before building, e.g. \"npm run build\".",
+          "items": {
+            "type": "string"
+          },
+          "x-aliases": [
+            "before",
+            "pre",
+            "prebuild"
+          ]
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Output directories per runtime, e.g. nodejs: dist.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "nav": {
+      "type": "array",
+      "description": "Navbar links.",
+      "items": {
+        "$ref": "#/definitions/link"
+      }
+    },
+    "footer": {
+      "type": "string",
+      "description": "Footer text."
+    },
+    "theme": {
+      "type": "object",
+      "description": "Light/dark theme switcher and palette overrides.",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "Initial theme mode.",
+          "enum": [
+            "auto",
+            "light",
+            "dark"
+          ],
+          "default": "auto"
+        },
+        "light": {
+          "$ref": "#/definitions/palette"
+        },
+        "dark": {
+          "$ref": "#/definitions/palette"
+        }
+      }
+    },
+    "book": {
+      "type": "object",
+      "description": "Book settings for the content/ shape.",
+      "additionalProperties": false,
+      "properties": {
+        "mount": {
+          "type": "string",
+          "description": "Sub-path to mount the book under, e.g. /docs/."
+        },
+        "toc": {
+          "type": "boolean",
+          "description": "Emit the root table-of-contents page."
+        }
+      }
+    },
+    "ssg": {
+      "type": "object",
+      "description": "Declarative static site (enables SSG mode).",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Description injected into every page."
+        },
+        "layouts": {
+          "type": "array",
+          "description": "Named layouts.",
+          "items": {
+            "type": "object",
+            "description": "A layout.",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Layout name."
+              },
+              "body": {
+                "type": "string",
+                "description": "Template body."
+              },
+              "style": {
+                "type": "string",
+                "description": "Scoped CSS."
+              },
+              "ui": {
+                "type": "object",
+                "description": "Build the layout from a pkg/ui shell.",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "components": {
+          "type": "array",
+          "description": "Named components.",
+          "items": {
+            "type": "object",
+            "description": "A component.",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Component name."
+              },
+              "body": {
+                "type": "string",
+                "description": "Template body."
+              },
+              "style": {
+                "type": "string",
+                "description": "Scoped CSS."
+              }
+            }
+          }
+        },
+        "pages": {
+          "type": "array",
+          "description": "Output pages.",
+          "items": {
+            "type": "object",
+            "description": "A page.",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Route, e.g. / or /about."
+              },
+              "title": {
+                "type": "string",
+                "description": "Page title."
+              },
+              "layout": {
+                "type": "string",
+                "description": "Layout name."
+              },
+              "root": {
+                "type": "string",
+                "description": "Root component name."
+              },
+              "data": {
+                "type": "object",
+                "description": "Data passed to the root component.",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "assets": {
+          "type": "object",
+          "description": "Output path to file contents.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "auto_assets": {
+          "$ref": "#/definitions/autoAssets"
+        }
+      }
+    },
+    "auto_assets": {
+      "$ref": "#/definitions/autoAssets"
+    },
+    "wasm": {
+      "type": "object",
+      "description": "WebAssembly build.",
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "type": "string",
+          "description": "Main package path.",
+          "default": "./wasm"
+        },
+        "name": {
+          "type": "string",
+          "description": "Output module name.",
+          "default": "runtime"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "description": "Multi-runtime coordination.",
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "Prefix for Krewire environment variables (letters, digits, underscore).",
+          "pattern": "^[A-Za-z0-9_]+$"
+        },
+        "env_file": {
+          "type": "string",
+          "description": "Path of the .env file, relative to the project root.",
+          "default": ".env"
+        },
+        "port": {
+          "$ref": "#/definitions/port",
+          "description": "Default runtime port."
+        }
+      }
+    },
+    "dev": {
+      "type": "object",
+      "description": "Development server.",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "$ref": "#/definitions/port",
+          "description": "Dev server port.",
+          "default": 8080
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "description": "Server settings.",
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Bind host."
+        },
+        "port": {
+          "$ref": "#/definitions/port",
+          "description": "Server port."
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "description": "Background worker.",
+      "additionalProperties": false,
+      "properties": {
+        "concurrency": {
+          "type": "integer",
+          "description": "Parallel jobs.",
+          "minimum": 1
+        },
+        "queues": {
+          "type": "array",
+          "description": "Queue names, in priority order.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "service": {
+      "$ref": "#/definitions/service",
+      "description": "Standalone microservice."
+    },
+    "services": {
+      "type": "array",
+      "description": "Multiple declared services; ports must be unique.",
+      "items": {
+        "$ref": "#/definitions/service"
+      }
+    },
+    "infra": {
+      "type": "object",
+      "description": "Cloud infrastructure blueprint.",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Infrastructure provider, e.g. krewire-cloud."
+        },
+        "region": {
+          "type": "string",
+          "description": "Region."
+        },
+        "state": {
+          "type": "string",
+          "description": "State backend location."
+        },
+        "resources": {
+          "type": "array",
+          "description": "Declared resources.",
+          "items": {
+            "type": "object",
+            "description": "A resource: kind, id, properties, dependson, metadata.",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "description": "API gateway reverse proxy.",
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Bind host."
+        },
+        "port": {
+          "$ref": "#/definitions/port",
+          "description": "Gateway port."
+        },
+        "routes": {
+          "type": "array",
+          "description": "Route table.",
+          "items": {
+            "type": "object",
+            "description": "A route.",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Request path."
+              },
+              "method": {
+                "type": "string",
+                "description": "HTTP method; empty matches all."
+              },
+              "service": {
+                "type": "string",
+                "description": "Target service name."
+              },
+              "target_url": {
+                "type": "string",
+                "description": "Target URL."
+              },
+              "prefix": {
+                "type": "boolean",
+                "description": "Match path as a prefix."
+              },
+              "strip_prefix": {
+                "type": "boolean",
+                "description": "Strip the matched prefix before proxying."
+              },
+              "middleware": {
+                "type": "array",
+                "description": "Middleware names.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rate_limit": {
+                "type": "integer",
+                "description": "Requests per second; 0 disables.",
+                "minimum": 0
+              },
+              "timeout": {
+                "type": "string",
+                "description": "Upstream timeout, e.g. 10s."
+              }
+            }
+          }
+        }
+      }
+    },
+    "scripts": {
+      "type": "object",
+      "description": "Named shell commands run with `krew run <task>`.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "x-aliases": [
+        "tasks",
+        "commands"
+      ]
+    },
+    "i18n": {
+      "type": "object",
+      "description": "Internationalization.",
+      "additionalProperties": false,
+      "properties": {
+        "default_locale": {
+          "type": "string",
+          "description": "Default locale, e.g. en."
+        },
+        "fallback_locale": {
+          "type": "string",
+          "description": "Locale used when a translation is missing."
+        },
+        "base_path": {
+          "type": "string",
+          "description": "Directory of locale message files."
+        },
+        "locales": {
+          "type": "array",
+          "description": "Supported locales.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "api": {
+      "type": "object",
+      "description": "Central API Gateway routing.",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "API Gateway endpoint. KREWIRE_API_URL overrides it.",
+          "default": "https://api.krewire.com"
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "description": "Database that `krew migrate` migrates. Environment variables APP_DATABASE_DRIVER, APP_DATABASE_DSN and APP_DATABASE_MIGRATIONS override these keys, as pkg/config does for apps.",
+      "additionalProperties": false,
+      "properties": {
+        "driver": {
+          "type": "string",
+          "description": "database/sql driver name. krew links only the pure-Go SQLite driver (\"sqlite\"); other drivers are migrated from the app with pkg/orm/migrate.",
+          "default": "sqlite",
+          "examples": [
+            "sqlite",
+            "postgres"
+          ]
+        },
+        "dsn": {
+          "type": "string",
+          "description": "Connection string. For SQLite, a file path relative to the project root.",
+          "examples": [
+            "app.db",
+            "postgres://user:pass@localhost:5432/app?sslmode=disable"
+          ]
+        },
+        "migrations": {
+          "type": "string",
+          "description": "Migrations directory, relative to the project root (where `krew make migration` writes).",
+          "default": "migrations"
+        },
+        "seeds": {
+          "type": "string",
+          "description": "Seeds directory, relative to the project root (where `krew make seeder` writes).",
+          "default": "seeds"
+        }
+      }
+    }
+  }
+}

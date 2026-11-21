@@ -1,0 +1,35 @@
+---
+title: Pricing
+layout: Base
+---
+<!-- Every .kiw construct the grammar highlights. -->
+<Container size="lg">
+  <Heading level="2">{title}</Heading>
+  {#if plans}
+    <Grid cols="3" gap="md">
+      {#each plans as plan, i}
+        <Card title="{plan.name}" variant={plan.variant} client:visible>
+          <p class:featured={plan.featured}>{plan.price}</p>
+          <slot name="footer"><Button href="/signup">Choose</Button></slot>
+        </Card>
+      {/each}
+    </Grid>
+  {:else if loading}
+    <Spinner label="Loading" />
+  {:else}
+    <Empty title="No plans" />
+  {/if}
+  {{ if .Note }}<small>{{ printf "%s" .Note }}</small>{{ end }}
+</Container>
+
+<markdown>
+Prices are **monthly**.
+</markdown>
+
+<style>
+.featured { font-weight: 800; }
+</style>
+
+<script lang="ts">
+const plans: number = document.querySelectorAll("[data-kiw-component=Card]").length;
+</script>

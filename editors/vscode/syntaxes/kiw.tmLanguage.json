@@ -1,0 +1,241 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Krewire .kiw",
+  "scopeName": "text.html.kiw",
+  "fileTypes": ["kiw"],
+  "patterns": [
+    { "include": "#frontmatter" },
+    { "include": "#comment" },
+    { "include": "#style" },
+    { "include": "#script" },
+    { "include": "#markdown" },
+    { "include": "#template-action" },
+    { "include": "#blocks" },
+    { "include": "#interpolation" },
+    { "include": "#component-tag" },
+    { "include": "#html-tag" },
+    { "include": "text.html.basic" }
+  ],
+  "repository": {
+    "frontmatter": {
+      "name": "meta.embedded.block.frontmatter.kiw",
+      "begin": "\\A\\s*(---)\\s*$",
+      "beginCaptures": { "1": { "name": "punctuation.definition.frontmatter.begin.kiw" } },
+      "end": "^(---)\\s*$",
+      "endCaptures": { "1": { "name": "punctuation.definition.frontmatter.end.kiw" } },
+      "contentName": "source.yaml",
+      "patterns": [{ "include": "source.yaml" }]
+    },
+    "comment": {
+      "name": "comment.block.html.kiw",
+      "begin": "<!--",
+      "end": "-->"
+    },
+    "style": {
+      "name": "meta.embedded.block.style.kiw",
+      "begin": "(<)(style)\\b([^>]*)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.style.html" },
+        "3": { "patterns": [{ "include": "#attributes" }] },
+        "4": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "end": "(</)(style)(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.style.html" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "source.css",
+      "patterns": [{ "include": "source.css" }]
+    },
+    "script": {
+      "patterns": [
+        {
+          "name": "meta.embedded.block.script.ts.kiw",
+          "begin": "(<)(script)\\b([^>]*\\blang=[\"']ts[\"'][^>]*)(>)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.tag.begin.html" },
+            "2": { "name": "entity.name.tag.script.html" },
+            "3": { "patterns": [{ "include": "#attributes" }] },
+            "4": { "name": "punctuation.definition.tag.end.html" }
+          },
+          "end": "(</)(script)(>)",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.tag.begin.html" },
+            "2": { "name": "entity.name.tag.script.html" },
+            "3": { "name": "punctuation.definition.tag.end.html" }
+          },
+          "contentName": "source.ts",
+          "patterns": [{ "include": "source.ts" }]
+        },
+        {
+          "name": "meta.embedded.block.script.kiw",
+          "begin": "(<)(script)\\b([^>]*)(>)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.tag.begin.html" },
+            "2": { "name": "entity.name.tag.script.html" },
+            "3": { "patterns": [{ "include": "#attributes" }] },
+            "4": { "name": "punctuation.definition.tag.end.html" }
+          },
+          "end": "(</)(script)(>)",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.tag.begin.html" },
+            "2": { "name": "entity.name.tag.script.html" },
+            "3": { "name": "punctuation.definition.tag.end.html" }
+          },
+          "contentName": "source.js",
+          "patterns": [{ "include": "source.js" }]
+        }
+      ]
+    },
+    "markdown": {
+      "name": "meta.embedded.block.markdown.kiw",
+      "begin": "(<)(markdown)\\b[^>]*(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.markdown.kiw" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "end": "(</)(markdown)(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.markdown.kiw" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "text.html.markdown",
+      "patterns": [{ "include": "text.html.markdown" }]
+    },
+    "template-action": {
+      "name": "meta.embedded.template.go.kiw",
+      "begin": "\\{\\{-?",
+      "beginCaptures": { "0": { "name": "punctuation.section.embedded.begin.kiw" } },
+      "end": "-?\\}\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.embedded.end.kiw" } },
+      "patterns": [
+        { "name": "comment.block.template.kiw", "begin": "/\\*", "end": "\\*/" },
+        { "name": "keyword.control.template.kiw", "match": "\\b(if|else|end|range|with|define|block|template|break|continue)\\b" },
+        { "name": "support.function.builtin.template.kiw", "match": "\\b(and|or|not|eq|ne|lt|le|gt|ge|len|index|slice|print|printf|println|html|js|urlquery|call)\\b" },
+        { "name": "support.function.kiw", "match": "\\b(component|mount|dict|class|assetLinks|asset|basePath|baseURL|safeHTML|raw)\\b" },
+        { "include": "#expression" }
+      ]
+    },
+    "blocks": {
+      "patterns": [
+        {
+          "name": "meta.block.each.kiw",
+          "match": "(\\{)(#each)\\s+([\\w$.]+)\\s+(as)\\s+([\\w$]+)(?:\\s*(,)\\s*([\\w$]+))?\\s*(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.block.begin.kiw" },
+            "2": { "name": "keyword.control.loop.each.kiw" },
+            "3": { "name": "variable.other.readwrite.kiw" },
+            "4": { "name": "keyword.control.as.kiw" },
+            "5": { "name": "variable.parameter.loop.kiw" },
+            "6": { "name": "punctuation.separator.comma.kiw" },
+            "7": { "name": "variable.parameter.index.kiw" },
+            "8": { "name": "punctuation.definition.block.end.kiw" }
+          }
+        },
+        {
+          "name": "meta.block.if.kiw",
+          "begin": "(\\{)(#if|:else\\s+if)\\b",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.kiw" },
+            "2": { "name": "keyword.control.conditional.kiw" }
+          },
+          "end": "\\}",
+          "endCaptures": { "0": { "name": "punctuation.definition.block.end.kiw" } },
+          "patterns": [{ "include": "#expression" }]
+        },
+        {
+          "name": "meta.block.branch.kiw",
+          "match": "(\\{)(:else|/if|/each)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.block.begin.kiw" },
+            "2": { "name": "keyword.control.kiw" },
+            "3": { "name": "punctuation.definition.block.end.kiw" }
+          }
+        }
+      ]
+    },
+    "interpolation": {
+      "name": "meta.interpolation.kiw",
+      "match": "(\\{)\\s*([A-Za-z_$][\\w$]*(?:\\.[\\w$]+)*)\\s*(\\})",
+      "captures": {
+        "1": { "name": "punctuation.section.interpolation.begin.kiw" },
+        "2": { "name": "variable.other.readwrite.kiw" },
+        "3": { "name": "punctuation.section.interpolation.end.kiw" }
+      }
+    },
+    "expression": {
+      "patterns": [
+        { "name": "string.quoted.double.kiw", "match": "\"(?:[^\"\\\\]|\\\\.)*\"" },
+        { "name": "string.quoted.single.kiw", "match": "'[^']*'" },
+        { "name": "string.quoted.raw.kiw", "match": "`[^`]*`" },
+        { "name": "constant.numeric.kiw", "match": "\\b\\d+(?:\\.\\d+)?\\b" },
+        { "name": "constant.language.kiw", "match": "\\b(true|false|nil)\\b" },
+        { "name": "keyword.operator.logical.kiw", "match": "&&|\\|\\||!(?!=)" },
+        { "name": "keyword.operator.comparison.kiw", "match": "==|!=|<=|>=|<|>" },
+        { "name": "keyword.operator.pipe.kiw", "match": "\\|" },
+        { "name": "variable.other.template.kiw", "match": "\\$[\\w]*(?:\\.[A-Za-z_]\\w*)*" },
+        { "name": "variable.other.property.kiw", "match": "\\.[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*" },
+        { "name": "variable.other.readwrite.kiw", "match": "[A-Za-z_][\\w$]*(?:\\.[\\w$]+)*" }
+      ]
+    },
+    "component-tag": {
+      "name": "meta.tag.component.kiw",
+      "begin": "(</?)([A-Z][A-Za-z0-9_]*)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "support.class.component.kiw" }
+      },
+      "end": "(/?>)",
+      "endCaptures": { "1": { "name": "punctuation.definition.tag.end.html" } },
+      "patterns": [{ "include": "#attributes" }]
+    },
+    "html-tag": {
+      "name": "meta.tag.html.kiw",
+      "begin": "(</?)([a-z][A-Za-z0-9-]*)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.html" }
+      },
+      "end": "(/?>)",
+      "endCaptures": { "1": { "name": "punctuation.definition.tag.end.html" } },
+      "patterns": [{ "include": "#attributes" }]
+    },
+    "attributes": {
+      "patterns": [
+        { "include": "#template-action" },
+        { "include": "#blocks" },
+        {
+          "name": "meta.directive.kiw",
+          "match": "\\b(client:(?:load|idle|visible|hydrate)|class:[\\w-]+|slot)\\b",
+          "captures": { "1": { "name": "keyword.other.directive.kiw" } }
+        },
+        { "name": "entity.other.attribute-name.html", "match": "[A-Za-z_:][-\\w:.]*" },
+        { "name": "punctuation.separator.key-value.html", "match": "=" },
+        {
+          "name": "string.quoted.double.html",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [{ "include": "#template-action" }, { "include": "#blocks" }, { "include": "#interpolation" }]
+        },
+        {
+          "name": "string.quoted.single.html",
+          "begin": "'",
+          "end": "'",
+          "patterns": [{ "include": "#template-action" }, { "include": "#blocks" }, { "include": "#interpolation" }]
+        },
+        {
+          "name": "meta.attribute.expression.kiw",
+          "begin": "\\{",
+          "beginCaptures": { "0": { "name": "punctuation.section.embedded.begin.kiw" } },
+          "end": "\\}",
+          "endCaptures": { "0": { "name": "punctuation.section.embedded.end.kiw" } },
+          "patterns": [{ "include": "#expression" }]
+        }
+      ]
+    }
+  }
+}
