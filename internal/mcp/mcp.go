@@ -17,8 +17,11 @@ import (
 
 	"github.com/krewire/krew/internal/buildinfo"
 	kiwconfig "github.com/krewire/krew/internal/config"
+	kiwcontext "github.com/krewire/krew/internal/context"
 	"github.com/krewire/krew/internal/scaffold"
 	"github.com/krewire/krew/internal/shape"
+	"github.com/krewire/krewire/pkg/model"
+	"github.com/krewire/krewire/pkg/sec"
 )
 
 // ProtocolVersion is the MCP specification version supported.
@@ -223,6 +226,35 @@ func (s *Server) dispatch(ctx context.Context, method string, paramsRaw json.Raw
 						},
 					},
 				},
+				{
+					"name":        "kiw_context",
+					"description": "Inspect authoritative project context (metadata, workload kind, Go version, tier, Three Pillars invariants) as machine-readable JSON per ENG-AI-001.",
+					"inputSchema": map[string]any{
+						"type":       "object",
+						"properties": map[string]any{},
+					},
+				},
+				{
+					"name":        "kiw_verify",
+					"description": "Execute canonical quality gates (fmt, vet, test, build, layering) and generate a tamper-evident task verification record, optionally appending to the verification ledger.",
+					"inputSchema": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"task_id": map[string]any{
+								"type":        "string",
+								"description": "Task or issue identifier (e.g. issue-42)",
+							},
+							"agent_id": map[string]any{
+								"type":        "string",
+								"description": "Agent identifier performing verification",
+							},
+							"save_ledger": map[string]any{
+								"type":        "boolean",
+								"description": "Whether to append evidence block to .krewire/ledger.json",
+							},
+						},
+					},
+				},
 			},
 		}, nil
 
@@ -316,9 +348,9 @@ func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMess
 		}
 		if len(argsRaw) > 0 {
 			_ = json.Unmarshal(argsRaw, &p)
-			if p.Pkg != "" {
-				pkg = p.Pkg
-			}
+		}
+		if p.Pkg != "" {
+			pkg = p.Pkg
 		}
 		cmd := exec.CommandContext(ctx, "go", "test", pkg)
 		cmd.Dir = s.root
@@ -327,6 +359,127 @@ func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMess
 			return fmt.Sprintf("Tests failed:\n%s", string(out)), true
 		}
 		return fmt.Sprintf("Tests passed:\n%s", string(out)), false
+
+	case "kiw_context":
+		projectCtx, err := kiwcontext.Load(s.root)
+		if err != nil {
+			return fmt.Sprintf("failed to load project context: %v", err), true
+		}
+		b, err := json.MarshalIndent(projectCtx, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("failed to serialize context: %v", err), true
+		}
+		return string(b), false
+
+	case "kiw_verify":
+		var vp struct {
+			TaskID     string `json:"task_id"`
+			AgentID    string `json:"agent_id"`
+			SaveLedger bool   `json:"save_ledger"`
+		}
+		if len(argsRaw) > 0 {
+			_ = json.Unmarshal(argsRaw, &vp)
+		}
+		if vp.TaskID == "" {
+			vp.TaskID = "mcp-task"
+		}
+		if vp.AgentID == "" {
+			vp.AgentID = "mcp-agent"
+		}
+
+		gitCommit := "unversioned"
+		workingTreeClean := false
+		if out, err := exec.Command("git", "rev-parse", "HEAD").Output(); err == nil {
+			gitCommit = strings.TrimSpace(string(out))
+		}
+		if out, err := exec.Command("git", "status", "--porcelain").Output(); err == nil {
+			workingTreeClean = len(strings.TrimSpace(string(out))) == 0
+		}
+
+		gateDefs := []struct {
+			ID          string
+			Type        model.QualityGateType
+			Description string
+			Command     string
+			Args        []string
+			Required    bool
+		}{
+			{ID: "fmt", Type: model.GateTypeFormat, Description: "Go code formatting check (gofmt -l .)", Command: "gofmt", Args: []string{"-l", "."}, Required: true},
+			{ID: "vet", Type: model.GateTypeStatic, Description: "Go static analysis and vet checks (go vet ./...)", Command: "go", Args: []string{"vet", "./..."}, Required: true},
+			{ID: "test", Type: model.GateTypeTest, Description: "Automated unit and integration test suite (go test ./...)", Command: "go", Args: []string{"test", "./..."}, Required: true},
+			{ID: "build", Type: model.GateTypeBuild, Description: "Pure-Go static compilation check (go build ./...)", Command: "go", Args: []string{"build", "./..."}, Required: true},
+		}
+
+		if _, err := os.Stat(filepath.Join(s.root, "layering_test.go")); err == nil {
+			gateDefs = append(gateDefs, struct {
+				ID          string
+				Type        model.QualityGateType
+				Description string
+				Command     string
+				Args        []string
+				Required    bool
+			}{ID: "layering", Type: model.GateTypeLayering, Description: "Downward-only layering architecture guard (layering_test.go)", Command: "go", Args: []string{"test", "-v", "./layering_test.go"}, Required: true})
+		}
+
+		var evidences []model.VerificationEvidence
+		for _, def := range gateDefs {
+			cmdStr := def.Command + " " + strings.Join(def.Args, " ")
+			ev := model.VerificationEvidence{
+				GateID:      def.ID,
+				Type:        def.Type,
+				Description: def.Description,
+				Command:     cmdStr,
+				Required:    def.Required,
+				Status:      model.GateAttempted,
+			}
+			start := time.Now()
+			cmd := exec.CommandContext(ctx, def.Command, def.Args...)
+			cmd.Dir = s.root
+			cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+			out, cmdErr := cmd.CombinedOutput()
+			ev.DurationMs = time.Since(start).Milliseconds()
+			rawOutput := strings.TrimSpace(string(out))
+
+			if def.ID == "fmt" && len(rawOutput) > 0 {
+				ev.Status = model.GateFailed
+				ev.ExitCode = 1
+				ev.Output = fmt.Sprintf("unformatted files detected:\n%s", rawOutput)
+			} else if cmdErr != nil {
+				ev.Status = model.GateFailed
+				if exitErr, ok := cmdErr.(*exec.ExitError); ok {
+					ev.ExitCode = exitErr.ExitCode()
+				} else {
+					ev.ExitCode = 1
+				}
+				ev.Output = sec.RedactSensitiveOutput(rawOutput)
+			} else {
+				ev.Status = model.GatePassed
+				ev.ExitCode = 0
+				ev.Output = sec.RedactSensitiveOutput(rawOutput)
+			}
+			ev.EvidenceHash = ev.ComputeHash(gitCommit)
+			evidences = append(evidences, ev)
+		}
+
+		record := model.NewTaskVerificationRecord(vp.TaskID, vp.AgentID, gitCommit, workingTreeClean, evidences)
+		if vp.SaveLedger {
+			ledgerPath := filepath.Join(s.root, ".krewire", "ledger.json")
+			var l *model.VerificationLedger
+			if loaded, err := model.LoadLedgerFile(ledgerPath); err == nil {
+				l = loaded
+			} else {
+				l = model.NewVerificationLedger(vp.TaskID)
+			}
+			if _, err := l.AppendBlock(gitCommit, evidences); err == nil {
+				_ = l.SaveFile(ledgerPath)
+			}
+		}
+
+		b, err := json.MarshalIndent(record, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("failed to serialize record: %v", err), true
+		}
+		return string(b), !record.OverallVerified
 
 	default:
 		return fmt.Sprintf("unknown tool %q", name), true

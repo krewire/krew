@@ -170,6 +170,33 @@ func TestTools(t *testing.T) {
 	if _, err := os.Stat(badgeFile); os.IsNotExist(err) {
 		t.Fatalf("expected component file %s does not exist", badgeFile)
 	}
+
+	// 5. kiw_context
+	callParams, _ = json.Marshal(map[string]any{
+		"name":      "kiw_context",
+		"arguments": map[string]any{},
+	})
+	res = srv.HandleRequest(ctx, Request{JSONRPC: "2.0", ID: 5, Method: "tools/call", Params: callParams})
+	if res == nil || res.Error != nil {
+		t.Fatalf("kiw_context failed: %+v", res)
+	}
+	m = res.Result.(map[string]any)
+	if m["isError"] == true {
+		t.Fatalf("kiw_context returned error: %v", m["content"])
+	}
+
+	// 6. kiw_verify
+	callParams, _ = json.Marshal(map[string]any{
+		"name": "kiw_verify",
+		"arguments": map[string]any{
+			"task_id":     "mcp-test-task",
+			"save_ledger": true,
+		},
+	})
+	res = srv.HandleRequest(ctx, Request{JSONRPC: "2.0", ID: 6, Method: "tools/call", Params: callParams})
+	if res == nil || res.Error != nil {
+		t.Fatalf("kiw_verify failed: %+v", res)
+	}
 }
 
 func TestStdioTransport(t *testing.T) {
