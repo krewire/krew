@@ -138,6 +138,23 @@ Krew provides battle-tested system personas tailored for specific operational en
 | `persona.DevOpsRunner` | Site reliability & DevOps | Server diagnostics, Docker/systemd automation, network debugging. |
 | `persona.AutonomousWorker` | Headless worker | Step-by-step task queue resolution with structured summaries. |
 | `persona.GeneralAssistant` | General companion | Explanations, Q&A, and workflow assistance. |
+| `persona.SDLCPlanner` | Architecture & scoping | Deconstructs task briefs into atomic steps with risk assessments. |
+| `persona.SDLCImplementer` | Scoped code writer | Atomic changes strictly bounded to granted scope. |
+| `persona.SDLCVerifier` | Qualification engineer | Deterministic test execution and failure root-cause analysis. |
+| `persona.SDLCReviewer` | Risk & diff auditor | Unified diff review, security assessment, and human sign-off prep. |
+
+---
+
+## 4. Governed SDLC Workflows
+
+Krew includes a deterministic, policy-gated SDLC workflow engine (`pkg/sdlc`):
+- **Structured Task Briefs**: Tasks specify objective, allowed repository scope, constraints, and verification commands.
+- **Stage Progression**: `understand` ──► `plan` ──► `implement` ──► `verify` ──► `review` ──► `report`.
+- **Scope Restriction**: File mutations outside `TaskBrief.Scope` are rejected.
+- **Deterministic Verification**: Tasks require reproducible check commands (`go test`, `kiw verify`, etc.) and fail closed on test errors.
+- **Human Review & Approval**: Interactive gates for plan approval, high-risk tools, and change review.
+
+See [docs/sdlc-workflows.md](docs/sdlc-workflows.md) for full architecture and usage guides.
 
 ---
 
