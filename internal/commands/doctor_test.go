@@ -61,7 +61,7 @@ func TestFindGoWork(t *testing.T) {
 		t.Fatalf("failed to get cwd: %v", err)
 	}
 
-	// We are inside krewire/tools/kiw/internal/commands, parent root has go.work
+	// We are inside krew/internal/commands, parent root has go.work
 	found := findGoWork(cwd)
 	if found == "" {
 		t.Logf("no go.work found from %s (acceptable if standalone)", cwd)
