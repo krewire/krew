@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/krewire/krew/pkg/agent"
+	"github.com/krewire/krew/pkg/ai/providers"
 	"github.com/krewire/krew/pkg/transport"
-	"github.com/krewire/krewire/pkg/ai/providers"
 )
 
 func setupTestAgent() *agent.Agent {

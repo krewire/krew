@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // sessionIDPattern constrains session identifiers to filesystem-safe names so

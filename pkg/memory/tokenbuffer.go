@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // DefaultTokenBudget is the heuristic context budget applied when no explicit

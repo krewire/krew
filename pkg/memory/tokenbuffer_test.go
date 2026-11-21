@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 func longMessage(n int) ai.Message {

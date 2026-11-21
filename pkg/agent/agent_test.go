@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krew/pkg/memory"
 	"github.com/krewire/krew/pkg/tools"
-	"github.com/krewire/krewire/pkg/ai"
 )
 
 // multiStepMock is a sequential response mock provider.

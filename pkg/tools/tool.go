@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // Tool defines an executable agent tool.

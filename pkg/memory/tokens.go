@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // Token estimation constants for the fast heuristic estimator. All LLM

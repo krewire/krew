@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 func TestSessionName(t *testing.T) {

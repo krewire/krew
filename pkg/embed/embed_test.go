@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/krewire/krew/pkg/agent"
+	"github.com/krewire/krew/pkg/ai/providers"
 	"github.com/krewire/krew/pkg/embed"
 	"github.com/krewire/krew/pkg/persona"
-	"github.com/krewire/krewire/pkg/ai/providers"
 )
 
 func TestEmbed_NewAndRun(t *testing.T) {

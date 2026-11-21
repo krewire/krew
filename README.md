@@ -194,7 +194,7 @@ func RegisterBoostAssistant(workspace string) (*embed.Instance, error) {
 
 ## 6. Supported LLM Providers
 
-Krew uses `github.com/krewire/krewire/pkg/ai` as its unified inference provider abstraction:
+Krew uses `github.com/krewire/krew/pkg/ai` as its unified inference provider abstraction:
 - **Google Gemini**: set `GEMINI_API_KEY` (defaults to Gemini 2.5 Flash / Pro).
 - **OpenAI**: set `OPENAI_API_KEY` (GPT-4o, o3-mini).
 - **Anthropic**: set `ANTHROPIC_API_KEY` (Claude 3.7 Sonnet).

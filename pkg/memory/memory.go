@@ -3,7 +3,7 @@ package memory
 import (
 	"sync"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // Memory manages conversation messages and context compaction.

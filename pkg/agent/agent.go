@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krew/pkg/memory"
 	"github.com/krewire/krew/pkg/persona"
 	"github.com/krewire/krew/pkg/tools"
-	"github.com/krewire/krewire/pkg/ai"
 )
 
 var (

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/krewire/krew/pkg/agent"
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krewire/pkg/model"
 )
 

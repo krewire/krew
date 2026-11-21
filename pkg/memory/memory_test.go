@@ -3,7 +3,7 @@ package memory
 import (
 	"testing"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 func TestBuffer(t *testing.T) {

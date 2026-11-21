@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // scriptedProvider yields queued responses across every agent in the

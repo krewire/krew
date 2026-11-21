@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krew/pkg/memory"
-	"github.com/krewire/krewire/pkg/ai"
 )
 
 func TestReplaySession(t *testing.T) {

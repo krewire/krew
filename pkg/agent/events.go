@@ -3,7 +3,7 @@ package agent
 import (
 	"time"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // EventType identifies the lifecycle phase of an agent step.

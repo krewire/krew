@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // compactorSystemPrompt directs the LLM to write one dense checkpoint out of

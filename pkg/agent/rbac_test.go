@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/krewire/krew/pkg/agent"
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krew/pkg/tools"
-	"github.com/krewire/krewire/pkg/ai"
 )
 
 type rbacMockProvider struct {

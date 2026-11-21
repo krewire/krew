@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 // Registry manages a thread-safe collection of invokable tools.

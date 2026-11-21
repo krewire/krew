@@ -9,9 +9,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krew/pkg/embed"
 	"github.com/krewire/krew/pkg/memory"
-	"github.com/krewire/krewire/pkg/ai"
 )
 
 func replaySession(w io.Writer, msgs []ai.Message) {

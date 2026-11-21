@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/krewire/krewire/pkg/boost"
+	"github.com/krewire/krew/pkg/boost"
 )
 
 // Persona represents an agent role with specialized instructions and behavior.

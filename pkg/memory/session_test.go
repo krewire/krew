@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krew/pkg/ai"
 )
 
 func TestSessionLog_AppendLoadRoundTrip(t *testing.T) {

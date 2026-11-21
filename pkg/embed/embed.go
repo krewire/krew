@@ -7,11 +7,11 @@ import (
 	"os"
 
 	"github.com/krewire/krew/pkg/agent"
+	"github.com/krewire/krew/pkg/ai"
+	"github.com/krewire/krew/pkg/ai/providers"
 	"github.com/krewire/krew/pkg/memory"
 	"github.com/krewire/krew/pkg/persona"
 	"github.com/krewire/krew/pkg/tools"
-	"github.com/krewire/krewire/pkg/ai"
-	"github.com/krewire/krewire/pkg/ai/providers"
 )
 
 // Options holds configuration for embedding a Krew agent.

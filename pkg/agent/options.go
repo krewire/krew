@@ -3,10 +3,10 @@ package agent
 import (
 	"encoding/json"
 
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krew/pkg/memory"
 	"github.com/krewire/krew/pkg/persona"
 	"github.com/krewire/krew/pkg/tools"
-	"github.com/krewire/krewire/pkg/ai"
 )
 
 // Approver is a function called before invoking a tool to confirm permission.

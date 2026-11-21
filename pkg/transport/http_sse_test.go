@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/krewire/krew/pkg/agent"
+	"github.com/krewire/krew/pkg/ai"
 	"github.com/krewire/krew/pkg/transport"
-	"github.com/krewire/krewire/pkg/ai"
 )
 
 type sseFrame struct {
