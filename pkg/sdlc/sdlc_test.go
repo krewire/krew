@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/krewire/krew/pkg/agent"
 )
 
 func TestTaskBrief_Validation(t *testing.T) {
@@ -246,5 +248,60 @@ func TestVerifier_Run(t *testing.T) {
 	}
 	if results[1].Passed || results[1].ExitCode != 1 || !strings.Contains(results[1].Output, "failure") {
 		t.Errorf("failing result mismatch: %+v", results[1])
+	}
+}
+
+func TestWorkflow_VerificationLedgerIntegrity(t *testing.T) {
+	dir := t.TempDir()
+
+	mockExec := func(ctx context.Context, d, command string) (int, string, error) {
+		return 0, "gate ok", nil
+	}
+
+	brief := TaskBrief{
+		ID:                   "TASK-LEDGER-01",
+		Title:                "Test Ledger",
+		Objective:            "Verify tamper-evident ledger chaining",
+		Repository:           "test/repo",
+		Scope:                []string{"."},
+		VerificationCommands: []string{"go test ./..."},
+	}
+
+	wf, err := NewWorkflow(WorkflowOptions{
+		Workspace:    dir,
+		Brief:        brief,
+		Executor:     mockExec,
+		UnderstandFn: func(ctx context.Context, b TaskBrief) error { return nil },
+		PlanFn: func(ctx context.Context, b TaskBrief) (*Plan, error) {
+			return &Plan{Summary: "Plan ok", Approved: true}, nil
+		},
+		ImplementFn: func(ctx context.Context, b TaskBrief, p *Plan, app agent.Approver) error {
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create workflow: %v", err)
+	}
+
+	result, err := wf.Run(context.Background())
+	if err != nil {
+		t.Fatalf("workflow execution failed: %v", err)
+	}
+
+	if result.Ledger == nil {
+		t.Fatal("expected workflow result to have a non-nil verification ledger")
+	}
+
+	ok, err := result.Ledger.VerifyIntegrity()
+	if !ok || err != nil {
+		t.Fatalf("verification ledger integrity check failed: ok=%v, err=%v", ok, err)
+	}
+
+	latest, err := result.Ledger.LatestBlock()
+	if err != nil {
+		t.Fatalf("failed to get latest ledger block: %v", err)
+	}
+	if !latest.AllPassed {
+		t.Errorf("expected all passed in latest block")
 	}
 }

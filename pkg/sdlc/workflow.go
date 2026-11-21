@@ -9,6 +9,7 @@ import (
 
 	"github.com/krewire/krew/pkg/agent"
 	"github.com/krewire/krewire/pkg/ai"
+	"github.com/krewire/krewire/pkg/model"
 )
 
 // WorkflowOptions configures an SDLC workflow execution.
@@ -70,6 +71,7 @@ func NewWorkflow(opts WorkflowOptions) (*Workflow, error) {
 				Model:     opts.Model,
 				Timestamp: time.Now(),
 			},
+			Ledger: model.NewVerificationLedger(opts.Brief.ID),
 		},
 	}
 
@@ -378,6 +380,29 @@ func (w *Workflow) runImplementAndVerify(ctx context.Context) error {
 		w.mu.Lock()
 		w.state.Evidence = evidence
 		w.state.Provenance.VerificationEvidence = evidence
+
+		if w.state.Ledger != nil {
+			var modelGates []model.VerificationEvidence
+			for _, res := range evidence {
+				status := model.GatePassed
+				if !res.Passed {
+					status = model.GateFailed
+				}
+				ev := model.VerificationEvidence{
+					GateID:     res.Command,
+					Type:       model.GateTypeTest,
+					Command:    res.Command,
+					Required:   true,
+					Status:     status,
+					ExitCode:   res.ExitCode,
+					Output:     res.Output,
+					DurationMs: res.Duration.Milliseconds(),
+				}
+				ev.EvidenceHash = ev.ComputeHash(w.opts.Brief.ID)
+				modelGates = append(modelGates, ev)
+			}
+			_, _ = w.state.Ledger.AppendBlock(w.opts.Brief.ID, modelGates)
+		}
 		w.mu.Unlock()
 
 		if passed {

@@ -3,6 +3,8 @@ package sdlc
 import (
 	"errors"
 	"time"
+
+	"github.com/krewire/krewire/pkg/model"
 )
 
 // Standard SDLC error definitions.
@@ -132,15 +134,16 @@ type WorkflowEvent struct {
 
 // WorkflowResult is the final output of a completed or halted SDLC workflow.
 type WorkflowResult struct {
-	TaskID     string               `json:"task_id"`
-	Status     Status               `json:"status"`
-	Stage      Stage                `json:"stage"`
-	Plan       *Plan                `json:"plan,omitempty"`
-	Diffs      []FileDiff           `json:"diffs,omitempty"`
-	Evidence   []VerificationResult `json:"evidence,omitempty"`
-	Review     *ReviewSummary       `json:"review,omitempty"`
-	Provenance Provenance           `json:"provenance"`
-	Error      string               `json:"error,omitempty"`
-	StartTime  time.Time            `json:"start_time"`
-	EndTime    time.Time            `json:"end_time"`
+	TaskID     string                    `json:"task_id"`
+	Status     Status                    `json:"status"`
+	Stage      Stage                     `json:"stage"`
+	Plan       *Plan                     `json:"plan,omitempty"`
+	Diffs      []FileDiff                `json:"diffs,omitempty"`
+	Evidence   []VerificationResult      `json:"evidence,omitempty"`
+	Review     *ReviewSummary            `json:"review,omitempty"`
+	Provenance Provenance                `json:"provenance"`
+	Ledger     *model.VerificationLedger `json:"ledger,omitempty"`
+	Error      string                    `json:"error,omitempty"`
+	StartTime  time.Time                 `json:"start_time"`
+	EndTime    time.Time                 `json:"end_time"`
 }
