@@ -45,18 +45,10 @@ const (
 )
 
 func parsePersona(name string) persona.Persona {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "devops", "ops", "sre":
-		return persona.DevOpsRunner
-	case "worker", "autonomous":
-		return persona.AutonomousWorker
-	case "general", "assistant":
-		return persona.GeneralAssistant
-	case "coding", "code", "dev":
-		fallthrough
-	default:
-		return persona.CodingAssistant
+	if p, ok := persona.Lookup(name); ok {
+		return p
 	}
+	return persona.CodingAssistant
 }
 
 func cliEventHandler(ev agent.Event) {

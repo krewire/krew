@@ -1,11 +1,39 @@
 package persona
 
+import (
+	"errors"
+	"strings"
+	"sync"
+)
+
 // Persona represents an agent role with specialized instructions and behavior.
 type Persona struct {
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
 	Instructions string   `json:"instructions"`
 	DefaultTools []string `json:"default_tools,omitempty"`
+}
+
+var (
+	// ErrInvalidPersonaName is returned when a persona has an empty name.
+	ErrInvalidPersonaName = errors.New("persona: name cannot be empty")
+
+	// ErrInvalidInstructions is returned when a persona has empty instructions.
+	ErrInvalidInstructions = errors.New("persona: instructions cannot be empty")
+
+	// ErrPersonaAlreadyExists is returned when registering a persona whose name is already taken.
+	ErrPersonaAlreadyExists = errors.New("persona: persona with this name already exists")
+)
+
+// Validate ensures the persona has mandatory identifying and behavioral fields.
+func (p Persona) Validate() error {
+	if strings.TrimSpace(p.Name) == "" {
+		return ErrInvalidPersonaName
+	}
+	if strings.TrimSpace(p.Instructions) == "" {
+		return ErrInvalidInstructions
+	}
+	return nil
 }
 
 // Pre-defined built-in personas.
@@ -126,3 +154,99 @@ Answer clearly, accurately, and assist with any tasks or questions requested.`,
 		DefaultTools: []string{"read_file", "grep_search", "find_files"},
 	}
 )
+
+var (
+	builtins = []Persona{
+		CodingAssistant,
+		DevOpsRunner,
+		AutonomousWorker,
+		GeneralAssistant,
+		ResearchAssistant,
+		SDLCPlanner,
+		SDLCImplementer,
+		SDLCVerifier,
+		SDLCReviewer,
+	}
+
+	mu       sync.RWMutex
+	registry = make(map[string]Persona)
+)
+
+// All returns a slice of all built-in and registered personas.
+func All() []Persona {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	result := make([]Persona, 0, len(builtins)+len(registry))
+	result = append(result, builtins...)
+	for _, p := range registry {
+		result = append(result, p)
+	}
+	return result
+}
+
+// Names returns a slice of all available persona names.
+func Names() []string {
+	personas := All()
+	names := make([]string, len(personas))
+	for i, p := range personas {
+		names[i] = p.Name
+	}
+	return names
+}
+
+// Lookup finds a persona by exact name, normalized name, or common aliases.
+func Lookup(name string) (Persona, bool) {
+	norm := strings.ToLower(strings.TrimSpace(name))
+	if norm == "" {
+		return Persona{}, false
+	}
+
+	// 1. Direct match with built-ins or canonical aliases
+	switch norm {
+	case "coding-assistant", "coding", "code", "dev":
+		return CodingAssistant, true
+	case "devops-runner", "devops", "ops", "sre":
+		return DevOpsRunner, true
+	case "autonomous-worker", "autonomous", "worker":
+		return AutonomousWorker, true
+	case "general-assistant", "general", "assistant":
+		return GeneralAssistant, true
+	case "research-assistant", "research", "investigate":
+		return ResearchAssistant, true
+	case "sdlc-planner", "planner", "plan":
+		return SDLCPlanner, true
+	case "sdlc-implementer", "implementer", "impl":
+		return SDLCImplementer, true
+	case "sdlc-verifier", "verifier", "verify":
+		return SDLCVerifier, true
+	case "sdlc-reviewer", "reviewer", "review":
+		return SDLCReviewer, true
+	}
+
+	// 2. Custom registry lookup
+	mu.RLock()
+	defer mu.RUnlock()
+	if p, ok := registry[norm]; ok {
+		return p, true
+	}
+
+	return Persona{}, false
+}
+
+// Register registers a custom persona into the runtime registry.
+func Register(p Persona) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+
+	norm := strings.ToLower(strings.TrimSpace(p.Name))
+	if _, exists := Lookup(norm); exists {
+		return ErrPersonaAlreadyExists
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	registry[norm] = p
+	return nil
+}
