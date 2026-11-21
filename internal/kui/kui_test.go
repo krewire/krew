@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/krewire/krewire/pkg/ui/components"
+	"github.com/krewire/ui/components"
 )
 
 func actions(rs []Result) map[string]Action {

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/kiw"
+	"github.com/krewire/ui/kiw"
 )
 
 func setupTestRoot(t *testing.T) string {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/krewire/krew/internal/shape"
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/term"
+	"github.com/krewire/tui/term"
 )
 
 // RegisterDash registers flags for the dash command group.

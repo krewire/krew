@@ -9,7 +9,7 @@ import (
 
 	"github.com/krewire/krewire/pkg/errs"
 	"github.com/krewire/krewire/pkg/hub/resolver"
-	kiwdsl "github.com/krewire/krewire/pkg/kiw"
+	kiwdsl "github.com/krewire/ui/kiw"
 )
 
 func RegisterAdd(fs *flag.FlagSet) {

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/krewire/krewire/pkg/tui"
+	"github.com/krewire/tui"
 	"gopkg.in/yaml.v3"
 )
 

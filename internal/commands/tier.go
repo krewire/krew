@@ -10,7 +10,7 @@ import (
 	"github.com/krewire/krew/internal/config"
 	"github.com/krewire/krewire/pkg/errs"
 	"github.com/krewire/krewire/pkg/model"
-	"github.com/krewire/krewire/pkg/term"
+	"github.com/krewire/tui/term"
 )
 
 var (

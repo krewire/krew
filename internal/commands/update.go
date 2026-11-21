@@ -12,7 +12,7 @@ import (
 
 	"github.com/krewire/krew/internal/gomod"
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/term"
+	"github.com/krewire/tui/term"
 )
 
 // RegisterUpdate registers flags for `krew update`.

@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/krewire/krewire/pkg/ui/components"
+	"github.com/krewire/ui/components"
 )
 
 // Dir is the project directory components are copied into.

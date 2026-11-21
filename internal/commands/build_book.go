@@ -9,7 +9,7 @@ import (
 	"github.com/krewire/krew/internal/config"
 	"github.com/krewire/krewire/pkg/book"
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/ui"
+	"github.com/krewire/ui"
 )
 
 // buildManuscript renders the project's content/ directory with the book engine.

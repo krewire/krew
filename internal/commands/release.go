@@ -13,8 +13,8 @@ import (
 	"github.com/krewire/krew/internal/release"
 	"github.com/krewire/krew/internal/shape"
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/term"
 	"github.com/krewire/krewire/pkg/version"
+	"github.com/krewire/tui/term"
 )
 
 type releaseModuleSlice []string

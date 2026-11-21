@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/krewire/krewire/pkg/term"
+	"github.com/krewire/tui/term"
 )
 
 func renderDoctorConsole(report DoctorReport) {

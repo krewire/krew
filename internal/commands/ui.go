@@ -13,7 +13,7 @@ import (
 
 	"github.com/krewire/krew/internal/kui"
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/ui/components"
+	"github.com/krewire/ui/components"
 )
 
 // RegisterUI registers flags for the ui command.

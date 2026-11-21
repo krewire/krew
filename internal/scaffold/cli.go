@@ -50,7 +50,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/krewire/krewire/pkg/tui"
+	"github.com/krewire/tui"
 	"%s/internal/commands"
 	"%s/internal/config"
 )

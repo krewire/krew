@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/krewire/krewire/pkg/errs"
-	kiwdsl "github.com/krewire/krewire/pkg/kiw"
+	kiwdsl "github.com/krewire/ui/kiw"
 )
 
 func TestPkgCommandLifecycle(t *testing.T) {

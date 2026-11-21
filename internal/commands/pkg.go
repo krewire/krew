@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/krewire/krewire/pkg/errs"
-	kiwdsl "github.com/krewire/krewire/pkg/kiw"
 	"github.com/krewire/krewire/pkg/model"
+	kiwdsl "github.com/krewire/ui/kiw"
 )
 
 // RegisterPkg registers command-line flags for the pkg command.

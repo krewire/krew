@@ -244,7 +244,7 @@ func New(opts Options) ([]string, error) {
 //
 // Keep in sync with the `go` directive in the workspace go.work and in every
 // module go.mod (see internal/docs/version.md §Go Baseline).
-const GoVersion = "1.27.1"
+const GoVersion = "1.27.3"
 
 // EquipOptions configures Equip. Dir is the project root to shape in place.
 type EquipOptions struct {

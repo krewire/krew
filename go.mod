@@ -1,9 +1,11 @@
 module github.com/krewire/krew
 
-go 1.27.1
+go 1.27.3
 
 require (
-	github.com/krewire/krewire v0.1.0
+	github.com/krewire/krewire v0.2.0
+	github.com/krewire/tui v0.0.0-00010101000000-000000000000
+	github.com/krewire/ui v0.0.0-20261109124147-f8e4d32a0a7c
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -18,7 +20,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.12.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.3 // indirect
-	github.com/krewire/ui v0.0.0-20261109124147-f8e4d32a0a7c // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -36,3 +37,7 @@ require (
 )
 
 replace github.com/krewire/krewire => ../krewire
+
+replace github.com/krewire/tui => ../tui
+
+replace github.com/krewire/ui => ../ui

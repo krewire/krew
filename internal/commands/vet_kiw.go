@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/krewire/krewire/pkg/kiw"
+	"github.com/krewire/ui/kiw"
 )
 
 // lintKiwFiles runs kiw.Lint on every .kiw file under root, skipping hidden,

@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/krewire/krew/internal/config"
-	"github.com/krewire/krewire/pkg/kiw"
 	"github.com/krewire/krewire/pkg/markdown"
 	"github.com/krewire/krewire/pkg/model"
 	"github.com/krewire/krewire/pkg/web/ssg"
+	"github.com/krewire/ui/kiw"
 )
 
 // RunnerConfig controls the benchmark runner execution.

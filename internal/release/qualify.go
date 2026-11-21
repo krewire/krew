@@ -228,8 +228,9 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 				if _, err := os.Stat(baselinePath); err != nil {
 					return fmt.Errorf("missing baseline report: %w", err)
 				}
-				cmd := exec.Command("go", "test", "-short", "./tools/kiw/internal/bench/...")
-				cmd.Dir = krewireDir
+				krewDir := filepath.Join(ctx.WorkspaceRoot, "krew")
+				cmd := exec.Command("go", "test", "-short", "./internal/bench/...")
+				cmd.Dir = krewDir
 				if out, err := cmd.CombinedOutput(); err != nil {
 					return fmt.Errorf("bench tests failed: %w (output: %s)", err, string(out))
 				}

@@ -154,7 +154,7 @@ func CanonicalPackageCatalog() []model.PackageMetadata {
 		},
 		{
 			Name:                 "kiw",
-			ImportPath:           "github.com/krewire/krewire/pkg/kiw",
+			ImportPath:           "github.com/krewire/ui/kiw",
 			Layer:                2,
 			Purpose:              "Unified .kiw DSL parser, AST desugaring, and HTML component compiler",
 			License:              "MIT",

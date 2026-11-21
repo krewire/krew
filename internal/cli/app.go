@@ -11,7 +11,7 @@ import (
 	_ "github.com/krewire/krewire/pkg/orm/mysql"
 	_ "github.com/krewire/krewire/pkg/orm/postgres"
 	_ "github.com/krewire/krewire/pkg/orm/sqlite"
-	"github.com/krewire/krewire/pkg/tui"
+	"github.com/krewire/tui"
 )
 
 // BuildApp builds the unified TUI CLI application with all devtools and AI agent commands.
@@ -63,8 +63,7 @@ func BuildApp(name string) *tui.App {
 		Command(tui.NewCommand("seed", "seed the database with records via Go seeders and factories", commands.RegisterSeed, commands.RunSeed).WithGroup("project").WithExample("krew seed --class DatabaseSeeder")).
 		Command(tui.NewCommand("db:seed", "alias for krew seed", commands.RegisterSeed, commands.RunSeed).WithGroup("project").WithHidden(true).WithExample("krew db:seed")).
 		Command(tui.NewCommand("ui", "browse, install, and diff kui components: list, info <name>, add <name|pack:x>, diff <name>", commands.RegisterUI, commands.RunUI).WithGroup("project").WithExample("krew ui list")).
-		Command(tui.NewCommand("pkg", "manage standalone .kiw component packages: init <name>, pack [dir], add <src>, list, export", commands.RegisterPkg, commands.RunPkg).WithGroup("project").WithCore().WithExample("krew pkg pack ./my-ui")).
-		Command(tui.NewCommand("kiw", "easter egg: playful client catcalls to developers", commands.RegisterKiw, commands.RunKiw).WithHidden(true).WithExample("krew kiw"))
+		Command(tui.NewCommand("pkg", "manage standalone .kiw component packages: init <name>, pack [dir], add <src>, list, export", commands.RegisterPkg, commands.RunPkg).WithGroup("project").WithCore().WithExample("krew pkg pack ./my-ui"))
 
 	for name, hint := range commands.Hints {
 		app.WithHint(name, hint)

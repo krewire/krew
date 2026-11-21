@@ -14,7 +14,7 @@ import (
 	"github.com/krewire/krew/internal/config"
 	"github.com/krewire/krew/internal/mcp"
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/term"
+	"github.com/krewire/tui/term"
 )
 
 // RegisterMCP registers flags for the mcp command.

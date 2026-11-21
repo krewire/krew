@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/krewire/krewire/pkg/ui"
 	"github.com/krewire/krewire/pkg/web/ssg"
+	"github.com/krewire/ui"
 )
 
 // SSGConfig holds SSG-specific fields that live under the `ssg:` key in

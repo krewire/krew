@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/krewire/krew/internal/config"
-	"github.com/krewire/krewire/pkg/kiw"
 	"github.com/krewire/krewire/pkg/markdown"
 	"github.com/krewire/krewire/pkg/model"
+	"github.com/krewire/ui/kiw"
 )
 
 // ── 1. Unit Tests for Inventory & Regression ────────────────────────────────

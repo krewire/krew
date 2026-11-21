@@ -1,6 +1,6 @@
 package config
 
-import "github.com/krewire/krewire/pkg/ui"
+import "github.com/krewire/ui"
 
 // Theme configures the theme switcher and per-mode palette overrides.
 type Theme struct {
