@@ -4,46 +4,60 @@ This document details the internal design and core packages within `github.com/k
 
 ## System Overview
 
+Krew is the unified developer toolchain and CLI driver for the Krewire digital SDLC ecosystem. Its architecture enforces private-by-default modularity with thin entrypoints and cohesive domain subsystems.
+
 ```text
-                                  Krew Agent Architecture
+                                cmd/krew (Composition Root)
                                              │
-         ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
-         ▼                   ▼                               ▼                   ▼
-    [pkg/persona]       [pkg/memory]                    [pkg/tools]        [pkg/transport]
-    - System Prompts    - Transcript Log                - Tool Registry    - Stdio (MCP)
-    - Tool Policies     - Context Compactor             - Schema Validation- HTTP / SSE
-    - Role Attributes   - Multi-Turn History            - Execution Guards - CLI (pty)
-         │                   │                               │                   │
-         └───────────────────┼───────────────────────────────┼───────────────────┘
-                             ▼                               ▼
-                      [pkg/agent]                     [pkg/embed]
-                      - Autonomous Loop               - In-Process Embed API
-                      - LLM Provider Interface        - Go Native Client
+                                             ▼
+                             internal/cli (App & Command Groups)
+                                             │
+       ┌────────────────────────┬────────────┴───────────┬────────────────────────┐
+       ▼                        ▼                        ▼                        ▼
+internal/commands      internal/dashboard         internal/scaffold       internal/config
+- Command Handlers     - Dev Dashboard Server     - Code Generators       - Schema Validator
+- Flags & Validation   - SSE Telemetry Stream     - Template Equipping    - krewire.yaml AST
+- Execution Drivers    - Web Console UI (/mcp)    - Workload Shapes       - Diagnostics
+       │                        │                        │                        │
+       └────────────────────────┴────────────┬───────────┴────────────────────────┘
+                                             ▼
+                              Foundational Ecosystem Libraries
+                              - github.com/krewire/tui (TUI primitives)
+                              - github.com/krewire/krewire/pkg/* (Core domain & AI)
 ```
 
-## Package Overview
+## Subsystem Domains
 
-- **`pkg/agent`**:
-  - Contains the core iterative execution loop: `Prompt` $\rightarrow$ `LLM Call` $\rightarrow$ `Tool Resolution` $\rightarrow$ `Execution` $\rightarrow$ `Observation` $\rightarrow$ `Completion`.
-  - Implements step limits, timeout controls, and graceful cancellation.
+- **`cmd/krew`**:
+  - Minimal composition root (~12 lines) invoking `cli.BuildApp("krew")`.
 
-- **`pkg/memory`**:
-  - Manages conversation turns, token consumption tracking, and context window sliding.
-  - Implements deterministic compaction strategies to avoid exceeding model context limits.
+- **`internal/cli`**:
+  - Root command builder and command-group definitions (`agent`, `project`, `build`, `develop`, `inspect`, `ship`).
+  - Flag parsing and delegation to command handlers.
 
-- **`pkg/tools`**:
-  - Defines the `Tool` interface (`Name()`, `Description()`, `Parameters()`, `Execute()`).
-  - Implements safety policies, sandboxing constraints, and parameter validation against JSON Schemas.
+- **`internal/commands`**:
+  - Command implementations categorized into logical functional domains:
+    - **Project & Database**: `init`, `new`, `add`, `remove`, `update`, `make`, `migrate`, `seed`, `ui`, `pkg`, `auth`.
+    - **Build & Artifacts**: `build`, `bundle`, `serve`.
+    - **Develop & Runtime**: `dev`, `run`, `test`, `verify`, `vet`, `fmt`, `worker`, `dash`, `gateway`, `mcp`.
+    - **Inspect & Diagnostics**: `version`, `info`, `compat`, `context`, `bench`, `tier`, `config`, `doctor`, `self-update`.
+    - **Ship & Release**: `deploy`, `ws`, `boost`, `release`.
 
-- **`pkg/persona`**:
-  - Declarative personas (`CodingAssistant`, `Researcher`, `Reviewer`, `Orchestrator`).
-  - Sets tone, operational constraints, and allowed tool subsets for each persona.
+- **`internal/dashboard`**:
+  - Standalone internal dashboard server subsystem.
+  - Serves local development dashboard, SSE telemetry (`/api/events`), health checks (`/api/health`), project info (`/api/info`), and mounts the MCP server endpoint.
 
-- **`pkg/transport`**:
-  - Provides transport adapters:
-    - **MCP (Model Context Protocol)**: Exposes tool declarations and execution over JSON-RPC 2.0 stdio.
-    - **HTTP/SSE**: Streams tokens, reasoning blocks, and tool results over HTTP Server-Sent Events.
-    - **Terminal**: Interactive CLI driver for human user communication.
+- **`internal/config` & `internal/shape`**:
+  - Declarative configuration parser (`krewire.yaml`), JSON schema validation, and project workload shape detector (`app`, `site`, `book`, `cli`, `worker`, `service`, `gateway`, `infra`).
 
-- **`pkg/embed`**:
-  - The primary public Go API for embedding Krew directly in external Go applications with zero external dependencies.
+- **`internal/scaffold`**:
+  - Deterministic project scaffolding, template extraction, and workload equipping.
+
+- **`internal/mcp`**:
+  - Model Context Protocol server exposing tool capabilities to IDE coding agents.
+
+## Architectural Invariants
+
+1. **Private by Default**: Krew provides developer toolchain binaries and contains no exported public Go SDK packages in `pkg/`. Reusable libraries belong strictly in `krewire/pkg/*`.
+2. **Pure Go (`CGO_ENABLED=0`)**: All command implementations, asset bundling, and file operations compile cleanly without native C linkages.
+3. **Downward-Only Dependencies**: Commands import internal domain libraries (`config`, `shape`, `scaffold`, `dashboard`), never the inverse.

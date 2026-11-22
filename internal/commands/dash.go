@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/krewire/krew/internal/dashboard"
 	"github.com/krewire/krew/internal/shape"
 	"github.com/krewire/krewire/pkg/errs"
 	"github.com/krewire/tui/term"
@@ -105,7 +106,7 @@ func runDashServer(fs *flag.FlagSet) errs.ExitCode {
 		kind = "app"
 	}
 
-	srv := newDashboardServer(rt.root, rt.cfg, kind, string(rt.env), host, port)
+	srv := dashboard.NewServer(rt.root, rt.cfg, kind, string(rt.env), host, port)
 	if err := srv.Start(); err != nil {
 		return fail(err)
 	}
@@ -121,7 +122,7 @@ func runDashServer(fs *flag.FlagSet) errs.ExitCode {
 	dim := func(s string) string { return tm.Paint(s, term.ColorDefault, []term.Style{term.StyleDim}) }
 
 	addr := srv.Addr()
-	info := srv.collectInfo()
+	info := srv.CollectInfo()
 
 	fmt.Printf("\n  %s\n", boldCyan("Krewire Dev Dashboard"))
 	fmt.Printf("  %s %s (kind: %s, env: %s)\n", dim("Project:    "), info.Name, info.Kind, info.Env)

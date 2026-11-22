@@ -1,4 +1,4 @@
-package commands
+package dashboard
 
 import (
 	"context"
@@ -16,7 +16,21 @@ import (
 	"github.com/krewire/krew/internal/mcp"
 )
 
-type dashboardServer struct {
+const (
+	// DefaultDashboardPort is the default HTTP listen port for the developer dashboard.
+	DefaultDashboardPort = "4000"
+
+	// DefaultDashboardHost is the default host address binding for the developer dashboard.
+	DefaultDashboardHost = "127.0.0.1"
+
+	// DefaultDashboardShutdownTimeout is the maximum duration allocated for server drainage.
+	DefaultDashboardShutdownTimeout = 3 * time.Second
+
+	// DefaultDashboardPulseInterval is the SSE telemetry push cadence.
+	DefaultDashboardPulseInterval = 2 * time.Second
+)
+
+type Server struct {
 	root      string
 	cfg       *config.Config
 	kind      string
@@ -28,8 +42,8 @@ type dashboardServer struct {
 	server    *http.Server
 }
 
-func newDashboardServer(root string, cfg *config.Config, kind, env, host, port string) *dashboardServer {
-	return &dashboardServer{
+func NewServer(root string, cfg *config.Config, kind, env, host, port string) *Server {
+	return &Server{
 		root:      root,
 		cfg:       cfg,
 		kind:      kind,
@@ -40,7 +54,7 @@ func newDashboardServer(root string, cfg *config.Config, kind, env, host, port s
 	}
 }
 
-func (d *dashboardServer) Handler() http.Handler {
+func (d *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", d.handleHome)
 	mux.HandleFunc("/api/info", d.handleInfo)
@@ -55,7 +69,7 @@ func (d *dashboardServer) Handler() http.Handler {
 	return mux
 }
 
-func (d *dashboardServer) Start() error {
+func (d *Server) Start() error {
 	addr := net.JoinHostPort(d.host, d.port)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -71,21 +85,21 @@ func (d *dashboardServer) Start() error {
 	return nil
 }
 
-func (d *dashboardServer) Addr() string {
+func (d *Server) Addr() string {
 	if d.listener != nil {
 		return d.listener.Addr().String()
 	}
 	return net.JoinHostPort(d.host, d.port)
 }
 
-func (d *dashboardServer) Stop(ctx context.Context) error {
+func (d *Server) Stop(ctx context.Context) error {
 	if d.server != nil {
 		return d.server.Shutdown(ctx)
 	}
 	return nil
 }
 
-func (d *dashboardServer) collectMetrics() RuntimeMetrics {
+func (d *Server) CollectMetrics() RuntimeMetrics {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
@@ -101,7 +115,7 @@ func (d *dashboardServer) collectMetrics() RuntimeMetrics {
 	}
 }
 
-func (d *dashboardServer) collectInfo() ProjectInfo {
+func (d *Server) CollectInfo() ProjectInfo {
 	name := ""
 	if d.cfg != nil {
 		name = d.cfg.Title
@@ -124,12 +138,20 @@ func (d *dashboardServer) collectInfo() ProjectInfo {
 		cfgMap["version"] = d.cfg.Version
 	}
 
+	ver, fromSource := buildinfo.ResolveVersion(buildinfo.ModKrewire)
+	if fromSource && ver != "" && ver != "dev" {
+		ver = ver + " (dev)"
+	}
+	if ver == "" {
+		ver = "dev"
+	}
+
 	return ProjectInfo{
 		Name:      name,
 		Kind:      d.kind,
 		Env:       d.env,
 		Root:      d.root,
-		Version:   qualifiedVersion(buildinfo.ModKrewire),
+		Version:   ver,
 		GoVersion: runtime.Version(),
 		Platform:  runtime.GOOS + "/" + runtime.GOARCH,
 		Port:      d.port,
@@ -140,7 +162,7 @@ func (d *dashboardServer) collectInfo() ProjectInfo {
 	}
 }
 
-func (d *dashboardServer) handleHome(w http.ResponseWriter, r *http.Request) {
+func (d *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
@@ -150,7 +172,7 @@ func (d *dashboardServer) handleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info := d.collectInfo()
+	info := d.CollectInfo()
 	initialJSON, err := json.Marshal(info)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -167,20 +189,20 @@ func (d *dashboardServer) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d *dashboardServer) handleInfo(w http.ResponseWriter, r *http.Request) {
-	info := d.collectInfo()
+func (d *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
+	info := d.CollectInfo()
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(info)
 }
 
-func (d *dashboardServer) handleMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := d.collectMetrics()
+func (d *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	metrics := d.CollectMetrics()
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(metrics)
 }
 
-func (d *dashboardServer) handleHealth(w http.ResponseWriter, r *http.Request) {
-	metrics := d.collectMetrics()
+func (d *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	metrics := d.CollectMetrics()
 	res := HealthResponse{
 		Status:        "ok",
 		Kind:          d.kind,
@@ -193,7 +215,7 @@ func (d *dashboardServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
-func (d *dashboardServer) handleEvents(w http.ResponseWriter, r *http.Request) {
+func (d *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
@@ -205,8 +227,7 @@ func (d *dashboardServer) handleEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// Send initial pulse immediately
-	initialMetrics := d.collectMetrics()
+	initialMetrics := d.CollectMetrics()
 	if b, err := json.Marshal(initialMetrics); err == nil {
 		fmt.Fprintf(w, "event: pulse\ndata: %s\n\n", b)
 		flusher.Flush()
@@ -220,7 +241,7 @@ func (d *dashboardServer) handleEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case <-ticker.C:
-			m := d.collectMetrics()
+			m := d.CollectMetrics()
 			b, err := json.Marshal(m)
 			if err != nil {
 				return

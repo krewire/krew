@@ -2,23 +2,23 @@ package commands
 
 import (
 	"flag"
-	"time"
 
+	"github.com/krewire/krew/internal/dashboard"
 	"github.com/krewire/krewire/pkg/errs"
 )
 
 const (
 	// DefaultDashboardPort is the default HTTP listen port for the developer dashboard.
-	DefaultDashboardPort = "4000"
+	DefaultDashboardPort = dashboard.DefaultDashboardPort
 
 	// DefaultDashboardHost is the default host address binding for the developer dashboard.
-	DefaultDashboardHost = "127.0.0.1"
+	DefaultDashboardHost = dashboard.DefaultDashboardHost
 
 	// DefaultDashboardShutdownTimeout is the maximum duration allocated for server drainage.
-	DefaultDashboardShutdownTimeout = 3 * time.Second
+	DefaultDashboardShutdownTimeout = dashboard.DefaultDashboardShutdownTimeout
 
 	// DefaultDashboardPulseInterval is the SSE telemetry push cadence.
-	DefaultDashboardPulseInterval = 2 * time.Second
+	DefaultDashboardPulseInterval = dashboard.DefaultDashboardPulseInterval
 )
 
 // RegisterDashboard registers flags for the dashboard command (alias for RegisterDash).

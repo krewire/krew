@@ -1,4 +1,4 @@
-package commands
+package dashboard_test
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/krewire/krew/internal/config"
+	"github.com/krewire/krew/internal/dashboard"
 )
 
 func TestDashboardServer_Endpoints(t *testing.T) {
@@ -60,7 +61,7 @@ services:
 		t.Fatalf("failed to load config: %v", err)
 	}
 
-	srv := newDashboardServer(dir, cfg, "site", "local", "127.0.0.1", "4000")
+	srv := dashboard.NewServer(dir, cfg, "site", "local", "127.0.0.1", "4000")
 	handler := srv.Handler()
 
 	// Subtest 1: GET / (HTML Dev Dashboard)
@@ -121,7 +122,7 @@ services:
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected status 200, got %d", rec.Code)
 		}
-		var info ProjectInfo
+		var info dashboard.ProjectInfo
 		if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
 			t.Fatalf("failed to parse JSON response: %v", err)
 		}
@@ -161,7 +162,7 @@ services:
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected status 200, got %d", rec.Code)
 		}
-		var m RuntimeMetrics
+		var m dashboard.RuntimeMetrics
 		if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
 			t.Fatalf("failed to decode metrics JSON: %v", err)
 		}
@@ -182,7 +183,7 @@ services:
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected status 200, got %d", rec.Code)
 		}
-		var h HealthResponse
+		var h dashboard.HealthResponse
 		if err := json.Unmarshal(rec.Body.Bytes(), &h); err != nil {
 			t.Fatalf("failed to decode health JSON: %v", err)
 		}
@@ -237,7 +238,7 @@ func TestDashboardServer_Lifecycle(t *testing.T) {
 		Title: "Lifecycle Test",
 	}
 
-	srv := newDashboardServer(dir, cfg, "app", "local", "127.0.0.1", "0")
+	srv := dashboard.NewServer(dir, cfg, "app", "local", "127.0.0.1", "0")
 	if err := srv.Start(); err != nil {
 		t.Fatalf("failed to start dashboard: %v", err)
 	}
