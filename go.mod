@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/krewire/krewire v0.2.0
 	github.com/krewire/tui v0.0.0-00010101000000-000000000000
-	github.com/krewire/ui v0.0.0-20261109124147-f8e4d32a0a7c
+	github.com/krewire/ui v0.2.3-0.20261122090259-4a9eb9a8999a
 	gopkg.in/yaml.v3 v3.0.1
 )
 
