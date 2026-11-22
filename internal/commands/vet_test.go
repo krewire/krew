@@ -14,7 +14,6 @@ func TestAuditSecurityPosture(t *testing.T) {
 	tmp := t.TempDir()
 	cleanYAML := `project:
   name: safe-app
-  kind: app
 auth:
   secret: "${env:APP_SECRET:-default-secret}"
 `

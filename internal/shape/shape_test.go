@@ -110,3 +110,77 @@ func main() {
 		t.Errorf("got %v (%s), want IsPreInit=true (pre-init)", got.IsPreInit(), got.Marker)
 	}
 }
+
+func TestResult_String(t *testing.T) {
+	r1 := Result{Marker: "pages/"}
+	if r1.String() != "pages/" {
+		t.Errorf("r1.String() = %s, want pages/", r1.String())
+	}
+	r2 := Result{Marker: ""}
+	if r2.String() != "krewire" {
+		t.Errorf("r2.String() = %s, want krewire", r2.String())
+	}
+}
+
+func TestIsApp(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "main.go", "package main\nfunc main() {}\n")
+	if !IsApp(dir) {
+		t.Errorf("IsApp should be true")
+	}
+	if IsApp(t.TempDir()) {
+		t.Errorf("IsApp should be false for empty dir")
+	}
+}
+
+func TestDetectCapabilities(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "krewire.yaml", `
+ssg:
+  enabled: true
+worker:
+  concurrency: 5
+service:
+  port: 8080
+gateway:
+  port: 8000
+infra:
+  provider: cloud
+`)
+	got, err := Detect(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Capabilities.HasSSG || !got.Capabilities.HasWorker || !got.Capabilities.HasService || !got.Capabilities.HasGateway || !got.Capabilities.HasInfra {
+		t.Errorf("expected all capabilities to be detected, got %+v", got.Capabilities)
+	}
+}
+
+func TestShape_EdgeCases(t *testing.T) {
+	// isPreInit false when main.go has other content
+	dir := t.TempDir()
+	writeFile(t, dir, "go.mod", "module example.com/starter\n")
+	writeFile(t, dir, "krewire.yaml", "project:\n  name: starter\n")
+	writeFile(t, dir, "main.go", "package main\nfunc main() {}\n")
+	if isPreInit(dir) {
+		t.Errorf("isPreInit should be false without hello, krewire marker")
+	}
+
+	// packageMain non-existent
+	if packageMain("/nonexistent/path") {
+		t.Errorf("packageMain should be false for non-existent dir")
+	}
+
+	// packageMain syntax error
+	badDir := t.TempDir()
+	writeFile(t, badDir, "bad.go", "package main\nfunc bad {")
+	writeFile(t, badDir, "good.go", "package main\nfunc main() {}")
+	if !packageMain(badDir) {
+		t.Errorf("packageMain should tolerate parse error on bad file if good file has main")
+	}
+
+	// hasYamlKey non-existent
+	if hasYamlKey(t.TempDir(), "worker") {
+		t.Errorf("hasYamlKey should be false when krewire.yaml is missing")
+	}
+}

@@ -57,9 +57,9 @@ func RegisterRelease(fs *flag.FlagSet) {
 //   - Maintainer mode: inside the Krewire workspace with --module/--all, it bumps
 //     the released modules' versions and propagates the new minimum versions into
 //     every dependent module's EcosystemRequires.
-//   - Project mode: inside a Krewire project (krewire.yaml with project.kind) with
+//   - Project mode: inside a Krewire project (with krewire.yaml) with
 //     no --module flag, it bumps the project version in krewire.yaml and builds the
-//     project, so ecosystem developers can release the apps/sites/books they build.
+//     project, so ecosystem developers can release the software they build.
 //
 // It is a dry run unless --apply is given.
 func RunRelease(fs *flag.FlagSet) errs.ExitCode {

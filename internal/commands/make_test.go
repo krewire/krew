@@ -16,7 +16,7 @@ func setupTestRoot(t *testing.T) string {
 	dir := t.TempDir()
 	// Create minimal krewire.yaml so findRoot() discovers it
 	cfgPath := filepath.Join(dir, "krewire.yaml")
-	if err := os.WriteFile(cfgPath, []byte("project:\n  kind: site\n"), 0o644); err != nil {
+	if err := os.WriteFile(cfgPath, []byte("project:\n  name: site\n"), 0o644); err != nil {
 		t.Fatalf("failed to create krewire.yaml: %v", err)
 	}
 	return dir

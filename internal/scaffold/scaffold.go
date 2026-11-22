@@ -346,8 +346,8 @@ func writeVariant(dir string, files []file) ([]string, error) {
 }
 
 // removeBootstrapMain removes the bootstrap's placeholder main.go (written by
-// `krew new`) when equipping a site or book variant, so shape detection is
-// pinned by project.kind rather than a stray app marker. It is a no-op when
+// `krew new`) when equipping a static or book variant, so the directory does not
+// falsely appear as a compiled Go binary application. It is a no-op when
 // the file is absent or was modified by the user.
 func removeBootstrapMain(dir string) error {
 	path := filepath.Join(dir, mainGo)

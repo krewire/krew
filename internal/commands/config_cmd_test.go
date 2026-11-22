@@ -24,7 +24,7 @@ func TestRunConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "krewire.yaml")
 
-	_ = os.WriteFile(path, []byte("project:\n  name: ok\n  kind: site\n"), 0o644)
+	_ = os.WriteFile(path, []byte("project:\n  name: ok\n  version: \"1.0.0\"\n"), 0o644)
 	if code := runConfigArgs(t, "validate", path); code != errs.ExitCodeSuccess {
 		t.Errorf("valid file: code %v", code)
 	}

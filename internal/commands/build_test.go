@@ -151,7 +151,7 @@ func TestRunBuild_AppBinary(t *testing.T) {
 	for name, content := range map[string]string{
 		"go.mod":       "module testapp\n\ngo 1.22\n",
 		"main.go":      "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"ok\") }\n",
-		"krewire.yaml": "project:\n  name: testapp\n  kind: app\n",
+		"krewire.yaml": "project:\n  name: testapp\n",
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 			t.Fatal(err)
@@ -181,7 +181,7 @@ func TestRunBuild_InfraPlan(t *testing.T) {
 	outDir := filepath.Join(dir, ".krewire", "build")
 
 	for name, content := range map[string]string{
-		"krewire.yaml": "project:\n  name: my-cloud\n  kind: infra\ninfra:\n  provider: krewire-cloud\n  region: asia-southeast1\nserver:\n  port: 8080\n",
+		"krewire.yaml": "project:\n  name: my-cloud\ninfra:\n  provider: krewire-cloud\n  region: asia-southeast1\nserver:\n  port: 8080\n",
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 			t.Fatal(err)
@@ -232,13 +232,13 @@ func TestRunBuild_PreInitRequiresInit(t *testing.T) {
 }
 
 func TestRunBuild_WorkerAndService(t *testing.T) {
-	for _, kind := range []string{"worker", "service"} {
-		t.Run(kind, func(t *testing.T) {
+	for _, targetName := range []string{"worker", "service"} {
+		t.Run(targetName, func(t *testing.T) {
 			dir := t.TempDir()
 			for name, content := range map[string]string{
 				"go.mod":       "module testmod\n\ngo 1.22\n",
 				"main.go":      "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"ok\") }\n",
-				"krewire.yaml": "project:\n  name: " + kind + "-app\n  kind: " + kind + "\n",
+				"krewire.yaml": "project:\n  name: " + targetName + "-app\n",
 			} {
 				if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 					t.Fatal(err)
@@ -251,9 +251,9 @@ func TestRunBuild_WorkerAndService(t *testing.T) {
 
 			code := RunBuild(fs)
 			if code != errs.ExitCodeSuccess {
-				t.Fatalf("RunBuild on %s failed: %v", kind, code)
+				t.Fatalf("RunBuild on %s failed: %v", targetName, code)
 			}
-			binPath := filepath.Join(dir, ".krewire", "build", "bin", kind+"-app")
+			binPath := filepath.Join(dir, ".krewire", "build", "bin", targetName+"-app")
 			if _, err := os.Stat(binPath); err != nil {
 				t.Fatalf("expected binary at %s: %v", binPath, err)
 			}
@@ -267,7 +267,7 @@ func TestRunBuild_WasmAutomaticSideBySide(t *testing.T) {
 
 	for name, content := range map[string]string{
 		"go.mod":           "module testwasm\n\ngo 1.22\n",
-		"krewire.yaml":     "project:\n  kind: site\nwasm:\n  entry: ./wasm\n  name: client\n",
+		"krewire.yaml":     "project:\n  name: site\nwasm:\n  entry: ./wasm\n  name: client\n",
 		"pages/index.html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>",
 		"wasm/main.go":     "package main\nfunc main() {}\n",
 	} {

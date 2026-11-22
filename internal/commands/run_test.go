@@ -11,17 +11,21 @@ import (
 
 func TestRunRun_RejectsNonRunnableWorkloads(t *testing.T) {
 	cases := []struct {
-		kind    string
+		name    string
 		content string
+		setup   func(dir string)
 	}{
-		{"site", "project:\n  kind: site\n"},
-		{"book", "project:\n  kind: book\n"},
-		{"infra", "project:\n  kind: infra\n"},
+		{"pages", "title: site\n", func(dir string) { _ = os.MkdirAll(filepath.Join(dir, "pages"), 0o755) }},
+		{"content", "title: book\n", func(dir string) { _ = os.MkdirAll(filepath.Join(dir, "content"), 0o755) }},
+		{"infra", "infra:\n  provider: krewire-cloud\n", func(dir string) {}},
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.kind, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
+			if tc.setup != nil {
+				tc.setup(dir)
+			}
 			if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(tc.content), 0o644); err != nil {
 				t.Fatal(err)
 			}
@@ -30,7 +34,7 @@ func TestRunRun_RejectsNonRunnableWorkloads(t *testing.T) {
 			RegisterRun(fs)
 			code := RunRun(fs)
 			if code != errs.ExitCodeUsage {
-				t.Errorf("RunRun on %s = %v, want ExitCodeUsage (2)", tc.kind, code)
+				t.Errorf("RunRun on %s = %v, want ExitCodeUsage (2)", tc.name, code)
 			}
 		})
 	}
@@ -41,7 +45,7 @@ func TestRunDev_RejectsInfraAndPreInit(t *testing.T) {
 		name    string
 		content string
 	}{
-		{"infra", "project:\n  kind: infra\n"},
+		{"infra", "infra:\n  provider: krewire-cloud\n"},
 		{"pre-init", "title: PreInit\n"},
 	}
 

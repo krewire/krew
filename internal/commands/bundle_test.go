@@ -18,7 +18,7 @@ func TestRunBundle_DirectAssets(t *testing.T) {
 	}
 
 	// Create minimal krewire.yaml
-	if err := os.WriteFile(filepath.Join(tmp, "krewire.yaml"), []byte("project:\n  name: test\n  kind: site\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmp, "krewire.yaml"), []byte("project:\n  name: test\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

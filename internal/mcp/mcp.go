@@ -172,7 +172,7 @@ func (s *Server) dispatch(ctx context.Context, method string, paramsRaw json.Raw
 			"tools": []map[string]any{
 				{
 					"name":        "kiw_inspect_project",
-					"description": "Inspect Krewire project metadata, workload kind, environment, Go toolchain, and services.",
+					"description": "Inspect Krewire project metadata, environment, Go toolchain, and services.",
 					"inputSchema": map[string]any{
 						"type":       "object",
 						"properties": map[string]any{},
@@ -228,7 +228,7 @@ func (s *Server) dispatch(ctx context.Context, method string, paramsRaw json.Raw
 				},
 				{
 					"name":        "kiw_context",
-					"description": "Inspect authoritative project context (metadata, workload kind, Go version, tier, Three Pillars invariants) as machine-readable JSON per ENG-AI-001.",
+					"description": "Inspect authoritative project context (metadata, Go version, tier, Three Pillars invariants) as machine-readable JSON per ENG-AI-001.",
 					"inputSchema": map[string]any{
 						"type":       "object",
 						"properties": map[string]any{},

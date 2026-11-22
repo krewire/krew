@@ -92,7 +92,7 @@ func TestRunWsInfo_PrintsRootTypeAndMembers(t *testing.T) {
 	}
 }
 
-func TestRunWsList_RendersProjectKindModuleTable(t *testing.T) {
+func TestRunWsList_RendersProjectModuleTable(t *testing.T) {
 	hub := t.TempDir()
 	writeFile(t, filepath.Join(hub, "go.mod"), "module example.com/hub\n")
 	writeFile(t, filepath.Join(hub, "go.work"), "go 1.26\n\nuse (\n\t.\n)\n")

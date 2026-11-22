@@ -11,13 +11,13 @@ import (
 )
 
 func TestRunDeploy_BinaryWorkloads(t *testing.T) {
-	for _, kind := range []string{"app", "cli", "worker", "service"} {
-		t.Run(kind, func(t *testing.T) {
+	for _, targetName := range []string{"app", "cli", "worker", "service"} {
+		t.Run(targetName, func(t *testing.T) {
 			dir := t.TempDir()
 			for name, content := range map[string]string{
-				"go.mod":       "module test" + kind + "\n\ngo 1.22\n",
+				"go.mod":       "module test" + targetName + "\n\ngo 1.22\n",
 				"main.go":      "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"ok\") }\n",
-				"krewire.yaml": "project:\n  name: " + kind + "-bin\n  kind: " + kind + "\n",
+				"krewire.yaml": "project:\n  name: " + targetName + "-bin\n",
 			} {
 				if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 					t.Fatal(err)
@@ -31,10 +31,10 @@ func TestRunDeploy_BinaryWorkloads(t *testing.T) {
 
 			code := RunDeploy(fs)
 			if code != errs.ExitCodeSuccess {
-				t.Fatalf("RunDeploy on %s failed: %v", kind, code)
+				t.Fatalf("RunDeploy on %s failed: %v", targetName, code)
 			}
 
-			distBin := filepath.Join(dir, ".krewire", "dist", "test"+kind)
+			distBin := filepath.Join(dir, ".krewire", "dist", "test"+targetName)
 			if _, err := os.Stat(distBin); err != nil {
 				t.Fatalf("expected binary at %s: %v", distBin, err)
 			}
@@ -49,13 +49,13 @@ func TestRunDeploy_BinaryWorkloads(t *testing.T) {
 }
 
 func TestRunDeploy_SystemdTarget(t *testing.T) {
-	for _, kind := range []string{"worker", "service", "app"} {
-		t.Run(kind, func(t *testing.T) {
+	for _, targetName := range []string{"worker", "service", "app"} {
+		t.Run(targetName, func(t *testing.T) {
 			dir := t.TempDir()
 			for name, content := range map[string]string{
-				"go.mod":       "module test" + kind + "\n\ngo 1.22\n",
+				"go.mod":       "module test" + targetName + "\n\ngo 1.22\n",
 				"main.go":      "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"ok\") }\n",
-				"krewire.yaml": "project:\n  name: " + kind + "-sys\n  kind: " + kind + "\n",
+				"krewire.yaml": "project:\n  name: " + targetName + "-sys\n",
 			} {
 				if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 					t.Fatal(err)
@@ -72,15 +72,15 @@ func TestRunDeploy_SystemdTarget(t *testing.T) {
 
 			code := RunDeploy(fs)
 			if code != errs.ExitCodeSuccess {
-				t.Fatalf("RunDeploy on %s systemd target failed: %v", kind, code)
+				t.Fatalf("RunDeploy on %s systemd target failed: %v", targetName, code)
 			}
 
-			distBin := filepath.Join(dir, ".krewire", "dist", "test"+kind)
+			distBin := filepath.Join(dir, ".krewire", "dist", "test"+targetName)
 			if _, err := os.Stat(distBin); err != nil {
 				t.Fatalf("expected binary at %s: %v", distBin, err)
 			}
 
-			unitFile := filepath.Join(dir, ".krewire", "dist", "test"+kind+".service")
+			unitFile := filepath.Join(dir, ".krewire", "dist", "test"+targetName+".service")
 			unitData, err := os.ReadFile(unitFile)
 			if err != nil {
 				t.Fatalf("expected systemd service at %s: %v", unitFile, err)
@@ -104,7 +104,7 @@ func TestRunDeploy_SystemdTarget(t *testing.T) {
 func TestRunDeploy_InfraTarget(t *testing.T) {
 	dir := t.TempDir()
 	for name, content := range map[string]string{
-		"krewire.yaml": "project:\n  name: my-infra\n  kind: infra\ninfra:\n  provider: krewire-cloud\n  region: asia-southeast1\nserver:\n  port: 8080\n",
+		"krewire.yaml": "project:\n  name: my-infra\ninfra:\n  provider: krewire-cloud\n  region: asia-southeast1\nserver:\n  port: 8080\n",
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 			t.Fatal(err)

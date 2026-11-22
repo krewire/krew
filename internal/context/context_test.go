@@ -170,3 +170,18 @@ func TestPrecedenceTier_Ordering(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_GoWorkWorkspaceFallback(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "go.work"), []byte("go 1.23.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, err := context.Load(tempDir)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if ctx.ModulePath != "workspace" {
+		t.Errorf("expected module path 'workspace', got %q", ctx.ModulePath)
+	}
+}

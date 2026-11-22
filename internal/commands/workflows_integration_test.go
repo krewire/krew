@@ -18,7 +18,6 @@ func TestWorkflow_CLIApplication(t *testing.T) {
 	cliDir := filepath.Join(dir, "my-cli-tool")
 	writeFile(t, filepath.Join(cliDir, "krewire.yaml"), `
 name: my-cli-tool
-kind: cli
 output: .krewire/build
 `)
 	writeFile(t, filepath.Join(cliDir, "go.mod"), "module example.com/cli\n\ngo 1.24\n")
@@ -60,7 +59,6 @@ func TestWorkflow_WebApplication(t *testing.T) {
 
 	writeFile(t, filepath.Join(dir, "krewire.yaml"), `
 name: portal
-kind: site
 output: .krewire/build
 `)
 	writeFile(t, filepath.Join(dir, "layouts", "Base.kiw"), `<!DOCTYPE html><html><head><title>{{.Title}}</title></head><body>{{.Content}}</body></html>`)
@@ -158,7 +156,7 @@ func TestWorkflow_FailureModes(t *testing.T) {
 	t.Run("MissingLayoutInSSG", func(t *testing.T) {
 		dir := t.TempDir()
 		chdir(t, dir)
-		writeFile(t, filepath.Join(dir, "krewire.yaml"), `kind: site`)
+		writeFile(t, filepath.Join(dir, "krewire.yaml"), `name: site`)
 		writeFile(t, filepath.Join(dir, "pages", "index.kiw"), `---
 title: No Layout
 ---

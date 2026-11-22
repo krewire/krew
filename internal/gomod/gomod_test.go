@@ -117,3 +117,42 @@ func TestCheckGoVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestGomod_ExtraCoverage(t *testing.T) {
+	var nilMod *Module
+	if nilMod.UsesKrewire() {
+		t.Errorf("nilMod.UsesKrewire should be false")
+	}
+
+	nonKrewireMod := &Module{
+		Requires: map[string]string{
+			"golang.org/x/tools": "v0.1.0",
+		},
+	}
+	if nonKrewireMod.UsesKrewire() {
+		t.Errorf("nonKrewireMod.UsesKrewire should be false")
+	}
+
+	// Read non-existent file
+	if _, err := Read("/nonexistent/go.mod"); err == nil {
+		t.Errorf("expected error reading non-existent file")
+	}
+
+	// CheckGoVersion edge cases
+	if err := CheckGoVersion("go1.27.1", ""); err != nil {
+		t.Errorf("expected nil when targetVer is empty")
+	}
+	if err := CheckGoVersion("go1.27.1-rc1", "1.27.0 extra"); err != nil {
+		t.Errorf("expected nil when targetVer has extra: %v", err)
+	}
+	if err := CheckGoVersion("go1.27", "1.27.1"); err == nil {
+		t.Errorf("expected error when runtime is 1.27 and target is 1.27.1")
+	}
+
+	// recordRequire with < 2 fields
+	m := &Module{Requires: make(map[string]string)}
+	m.recordRequire("onlyonefield")
+	if len(m.Requires) != 0 {
+		t.Errorf("expected 0 requires recorded for invalid line")
+	}
+}

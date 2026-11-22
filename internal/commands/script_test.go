@@ -142,7 +142,7 @@ func main(){ fmt.Println("app-run") }
 	for name, body := range map[string]string{
 		"go.mod":       "module demo\n\ngo 1.22\n",
 		"main.go":      main,
-		"krewire.yaml": "title: Demo\nproject:\n  kind: app\n",
+		"krewire.yaml": "title: Demo\nproject:\n  name: demo\n",
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
 			t.Fatal(err)

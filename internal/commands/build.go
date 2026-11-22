@@ -51,7 +51,7 @@ func RegisterBuild(fs *flag.FlagSet) {
 }
 
 // RunBuild builds the project for production. It dispatches according to the
-// detected project workload kind (site, book, app, cli, worker, service, infra)
+// detected project capabilities (pages, book, app binary, worker, service, infra)
 // or explicit --target flag (KWN-BUILD-001).
 //
 // Progressive enhancement is preserved: when web pages or content docs coexist

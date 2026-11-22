@@ -141,3 +141,91 @@ func TestDetectHost_SvelteAndVue(t *testing.T) {
 		t.Errorf("expected Vue framework, got %+v", hostVue)
 	}
 }
+
+func TestEcosystem_ExtraCoverage(t *testing.T) {
+	var nilHost *HostProject
+	if nilHost.DisplayTitle() != "None" {
+		t.Errorf("nilHost.DisplayTitle() = %s, want None", nilHost.DisplayTitle())
+	}
+
+	phpHost := &HostProject{Type: HostPHP}
+	if phpHost.DisplayTitle() != "PHP / Composer" {
+		t.Errorf("phpHost.DisplayTitle() = %s, want PHP / Composer", phpHost.DisplayTitle())
+	}
+
+	customHost := &HostProject{Type: HostType("custom")}
+	if customHost.DisplayTitle() != "custom" {
+		t.Errorf("customHost.DisplayTitle() = %s, want custom", customHost.DisplayTitle())
+	}
+
+	// Package manager detection
+	dirYarn := t.TempDir()
+	_ = os.WriteFile(filepath.Join(dirYarn, "yarn.lock"), []byte(""), 0o644)
+	if detectNodePackageManager(dirYarn) != "yarn" {
+		t.Errorf("expected yarn")
+	}
+
+	dirBun := t.TempDir()
+	_ = os.WriteFile(filepath.Join(dirBun, "bun.lock"), []byte(""), 0o644)
+	if detectNodePackageManager(dirBun) != "bun" {
+		t.Errorf("expected bun")
+	}
+
+	dirNpm := t.TempDir()
+	_ = os.WriteFile(filepath.Join(dirNpm, "package-lock.json"), []byte(""), 0o644)
+	if detectNodePackageManager(dirNpm) != "npm" {
+		t.Errorf("expected npm")
+	}
+
+	// Framework detection
+	frameworkTests := []struct {
+		dep  string
+		want string
+	}{
+		{"nuxt", "Nuxt"},
+		{"next", "Next.js"},
+		{"@remix-run/react", "Remix"},
+		{"@remix-run/node", "Remix"},
+		{"@vue/cli-service", "Vue"},
+		{"astro", "Astro"},
+		{"solid-start", "SolidStart"},
+		{"@nestjs/core", "NestJS"},
+		{"fastify", "Fastify"},
+		{"express", "Express"},
+		{"unknown-lib", ""},
+	}
+	for _, ft := range frameworkTests {
+		got := detectNodeFramework(map[string]string{ft.dep: "1.0.0"}, nil)
+		if got != ft.want {
+			t.Errorf("detectNodeFramework(%s) = %s, want %s", ft.dep, got, ft.want)
+		}
+	}
+
+	// Plain PHP (composer.json without laravel)
+	dirPHP := t.TempDir()
+	compJSON := `{"name": "vendor/package", "require": {"php": "^8.2"}}`
+	_ = os.WriteFile(filepath.Join(dirPHP, ManifestComposerJSON), []byte(compJSON), 0o644)
+	hostPHP := DetectHost(dirPHP)
+	if hostPHP == nil || hostPHP.Type != HostPHP {
+		t.Errorf("expected HostPHP, got %+v", hostPHP)
+	}
+
+	// Bad composer.json returns fallback
+	dirBadPHP := t.TempDir()
+	_ = os.WriteFile(filepath.Join(dirBadPHP, ManifestComposerJSON), []byte("{bad"), 0o644)
+	if h := DetectHost(dirBadPHP); h == nil || h.Type != HostPHP {
+		t.Errorf("expected HostPHP fallback for bad composer.json")
+	}
+
+	// Invalid package.json and composer.json fallback handling
+	dirInvalid := t.TempDir()
+	_ = os.WriteFile(filepath.Join(dirInvalid, ManifestPackageJSON), []byte("{bad"), 0o644)
+	if h := DetectHost(dirInvalid); h == nil || h.Type != HostNodeJS {
+		t.Errorf("expected HostNodeJS fallback for invalid package.json")
+	}
+
+	dirEmpty := t.TempDir()
+	if h := DetectHost(dirEmpty); h != nil {
+		t.Errorf("expected nil host when no manifests exist")
+	}
+}

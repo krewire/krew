@@ -245,7 +245,7 @@ func TestMigrate_GoMigrations_EndToEnd(t *testing.T) {
 func TestMigrate_ConfigPrecedenceAndErrors(t *testing.T) {
 	dir := t.TempDir()
 	chdir(t, dir)
-	writeFile(t, filepath.Join(dir, "krewire.yaml"), "project:\n  name: x\n  kind: app\ndatabase:\n  dsn: yaml.db\n  migrations: db/migrations\n")
+	writeFile(t, filepath.Join(dir, "krewire.yaml"), "project:\n  name: x\ndatabase:\n  dsn: yaml.db\n  migrations: db/migrations\n")
 	writeFile(t, filepath.Join(dir, ".env"), "APP_DATABASE_DSN=env.db\n")
 	t.Setenv("APP_DATABASE_DSN", "")
 	_ = os.Unsetenv("APP_DATABASE_DSN")
@@ -296,7 +296,7 @@ func TestRoundDuration(t *testing.T) {
 func TestMigrate_LegacyDirFallback(t *testing.T) {
 	dir := t.TempDir()
 	chdir(t, dir)
-	writeFile(t, filepath.Join(dir, "krewire.yaml"), "project:\n  name: legacy\n  kind: app\ndatabase:\n  driver: sqlite\n  dsn: legacy.db\n")
+	writeFile(t, filepath.Join(dir, "krewire.yaml"), "project:\n  name: legacy\ndatabase:\n  driver: sqlite\n  dsn: legacy.db\n")
 	legacyDir := filepath.Join(dir, "migrations")
 	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
 		t.Fatal(err)

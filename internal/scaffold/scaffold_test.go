@@ -291,7 +291,7 @@ func TestEquipStatic(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "ssg.yaml")); !os.IsNotExist(err) {
 		t.Error("ssg.yaml should not exist")
 	}
-	// The bootstrap main.go is removed so shape is pinned by project.kind.
+	// The bootstrap main.go is removed so static pages are previewed cleanly.
 	if _, err := os.Stat(filepath.Join(dir, "main.go")); !os.IsNotExist(err) {
 		t.Error("bootstrap main.go should be removed for a static project")
 	}

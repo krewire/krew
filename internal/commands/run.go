@@ -142,42 +142,6 @@ func runApp(rt *runtimeEnv, fs *flag.FlagSet) errs.ExitCode {
 	return waitChild(cmd)
 }
 
-// runCLI builds and runs a CLI project in production mode: it compiles the
-// root main.go into a temp binary and executes it, forwarding SIGINT/SIGTERM
-// so the CLI's own exit path resolves the process code. No listen address is
-// injected for CLI projects.
-func runCLI(rt *runtimeEnv, fs *flag.FlagSet) errs.ExitCode {
-	dir, err := os.MkdirTemp("", "krewire-run-")
-	if err != nil {
-		return fail(err)
-	}
-	defer os.RemoveAll(dir)
-
-	bin := filepath.Join(dir, "app")
-
-	entry := resolveEntry(rt.root)
-	slog.Info("building CLI", "bin", bin, "entry", entry)
-	build := exec.Command("go", "build", "-ldflags="+buildinfo.LDFlags(false), "-o", bin, entry)
-	build.Dir = rt.root
-	build.Stdout = os.Stderr
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		return fail(fmt.Errorf("build cli: %w", err))
-	}
-
-	cmd := exec.Command(bin, fs.Args()...)
-	cmd.Dir = rt.root
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = childEnviron(os.Environ(), "", rt.env, rt.debug)
-	if err := cmd.Start(); err != nil {
-		return fail(err)
-	}
-
-	return waitChild(cmd)
-}
-
 // waitChild forwards SIGINT/SIGTERM to the child process and resolves the
 // exit code from the child's status.
 func waitChild(cmd *exec.Cmd) errs.ExitCode {

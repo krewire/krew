@@ -99,7 +99,6 @@ func TestRunGateway_ConfigRoutes(t *testing.T) {
 	dir := t.TempDir()
 	yamlContent := fmt.Sprintf(`project:
   name: test-gw
-  kind: app
 gateway:
   port: 18990
   host: 127.0.0.1

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/krewire/krewire/pkg/web/ssg"
 	"github.com/krewire/ui"
 )
 
@@ -55,7 +56,7 @@ theme:
 	}
 }
 
-// A project may declare its version next to the kind instead of at the top
+// A project may declare its version under project: instead of at the top
 // level. Both must produce the same effective version, otherwise the ssg half
 // stamps its cache-busting query while the book half does not, and a reader
 // keeps a stale stylesheet on one page family and a fresh one on the other.
@@ -156,5 +157,60 @@ func TestAPIEndpoints(t *testing.T) {
 	t.Setenv("KREWIRE_API_URL", "https://api.staging.krewire.com/")
 	if got := c.APIURL(); got != "https://api.staging.krewire.com" {
 		t.Errorf("APIURL() with env override = %q, want %q", got, "https://api.staging.krewire.com")
+	}
+}
+
+func TestConfig_SSGAndDeclaredPort(t *testing.T) {
+	var nilCfg *Config
+	if nilCfg.IsSSG() {
+		t.Errorf("nilCfg.IsSSG() should be false")
+	}
+	if nilCfg.DeclaredPort() != 0 {
+		t.Errorf("nilCfg.DeclaredPort() = %d, want 0", nilCfg.DeclaredPort())
+	}
+
+	c := &Config{}
+	if c.IsSSG() {
+		t.Errorf("c.IsSSG() should be false when SSG is nil")
+	}
+	if c.DeclaredPort() != 0 {
+		t.Errorf("c.DeclaredPort() = %d, want 0", c.DeclaredPort())
+	}
+
+	c.Runtime.Port = 8081
+	if c.DeclaredPort() != 8081 {
+		t.Errorf("DeclaredPort() = %d, want 8081", c.DeclaredPort())
+	}
+
+	c.Runtime.Port = 0
+	c.Dev.Port = 8082
+	if c.DeclaredPort() != 8082 {
+		t.Errorf("DeclaredPort() = %d, want 8082", c.DeclaredPort())
+	}
+
+	c.Dev.Port = 0
+	c.Server.Port = 8083
+	if c.DeclaredPort() != 8083 {
+		t.Errorf("DeclaredPort() = %d, want 8083", c.DeclaredPort())
+	}
+
+	c.Server.Port = 0
+	c.Services = []ServiceConfig{{Name: "svc", Port: 8084}}
+	if c.DeclaredPort() != 8084 {
+		t.Errorf("DeclaredPort() = %d, want 8084", c.DeclaredPort())
+	}
+
+	// SSG config conversion
+	bTrue := true
+	c.SSG = &SSGConfig{
+		Description: "test site",
+		AutoAssets:  &ssg.AutoAssetConfig{Enabled: &bTrue},
+	}
+	if !c.IsSSG() {
+		t.Errorf("c.IsSSG() should be true")
+	}
+	ssgCfg := c.ToSSGConfig()
+	if ssgCfg.Description != "test site" || ssgCfg.AutoAssets == nil || !*ssgCfg.AutoAssets.Enabled {
+		t.Errorf("unexpected ssgCfg: %+v", ssgCfg)
 	}
 }

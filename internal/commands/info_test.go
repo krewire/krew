@@ -99,7 +99,6 @@ func TestRunInfo_LaravelEcosystemAndColocated(t *testing.T) {
 	}
 	krewireYaml := `project:
   name: queue-worker
-  kind: worker
 `
 	if err := os.WriteFile(filepath.Join(workerDir, "krewire.yaml"), []byte(krewireYaml), 0o644); err != nil {
 		t.Fatal(err)

@@ -22,7 +22,7 @@ func runWith(t *testing.T, register func(*flag.FlagSet), run func(*flag.FlagSet)
 func TestAddUIComponentsAndPacks(t *testing.T) {
 	dir := t.TempDir()
 	chdir(t, dir)
-	_ = os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte("project:\n  name: p\n  kind: site\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte("project:\n  name: p\n"), 0o644)
 
 	if code := runWith(t, RegisterAdd, RunAdd, "ui/button", "ui:dashboard"); code != errs.ExitCodeSuccess {
 		t.Fatalf("krew add: code %v", code)

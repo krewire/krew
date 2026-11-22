@@ -28,7 +28,6 @@ func TestSeed_NoSeedsDir(t *testing.T) {
 	// Minimal krewire.yaml
 	yaml := `project:
   name: demo
-kind: app
 database:
   driver: sqlite
   dsn: test.db
@@ -48,7 +47,6 @@ func TestSeed_EmptySeedsDir(t *testing.T) {
 
 	yaml := `project:
   name: demo
-kind: app
 database:
   driver: sqlite
   dsn: test.db

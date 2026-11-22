@@ -9,8 +9,8 @@ import (
 	"github.com/krewire/krew/internal/config"
 )
 
-// TestWorkloadTransitions verifies that projects can progressively evolve
-// between workload kinds without broken configuration, data loss, or syntax errors.
+// TestProjectCapabilityTransitions verifies that projects can progressively evolve
+// new capabilities without broken configuration, data loss, or syntax errors.
 func TestWorkloadTransitions(t *testing.T) {
 	// ── 1. Transition 1: App to App + Worker ─────────────────────────────────
 	t.Run("App_To_App_Plus_Worker", func(t *testing.T) {
