@@ -1,12 +1,12 @@
 # Getting Started with Krew
 
-This guide explains how to install, build, and run **Krew** locally as a CLI tool or as an embedded Go package.
+This guide explains how to install, build, and run **Krew** locally as the developer toolchain CLI.
 
 ## Prerequisites
 
 - **Go**: Version 1.27.1 or newer.
 - **Git**: Configured for your GitHub account.
-- **LLM API Key** (optional for live AI queries): An API key for an LLM provider (e.g., Anthropic, OpenAI, or local Ollama endpoint). Mock providers are built-in for local tests.
+- **Docker** (optional): For running local containerized services (e.g. `krewire-db`).
 
 ## Local Setup
 
@@ -29,67 +29,87 @@ This guide explains how to install, build, and run **Krew** locally as a CLI too
 4. **Verify the installation**:
    ```bash
    ./bin/krew version
-   # Output: Krew AI Agent v0.1.0
    ```
 
-## Running the Interactive CLI
+## Common Workflows
 
-Start an interactive chat session:
-
-```bash
-./bin/krew chat
-```
-
-Run a one-shot instruction:
+### 1. Scaffold a New Project
 
 ```bash
-./bin/krew run "analyze git repository status and summarize recent commits"
+# Create a new web application
+./bin/krew new my-app --app
+
+# Create a documentation site
+./bin/krew new my-docs --site
 ```
 
-## Running as an MCP Server
+### 2. Live Development Server
+
+```bash
+cd my-app
+krew dev
+```
+
+### 3. Database Migrations (Laravel-Style in Go)
+
+Generate a new typed Go migration:
+
+```bash
+krew make migration create_users_table
+```
+
+This creates `database/migrations/<timestamp>_create_users_table.go`:
+
+```go
+package migrations
+
+import (
+	"context"
+
+	"github.com/krewire/krewire/pkg/orm/migrate"
+	"github.com/krewire/krewire/pkg/orm/schema"
+)
+
+func init() {
+	migrate.Register(&migrate.Migration{
+		Name: "create_users_table",
+		Up: func(ctx context.Context, s *schema.Builder) error {
+			return s.Create("users", func(t *schema.Blueprint) {
+				t.Increments("id")
+				t.String("name", 255)
+				t.String("email", 255).Unique()
+				t.Timestamps()
+			})
+		},
+		Down: func(ctx context.Context, s *schema.Builder) error {
+			return s.DropIfExists("users")
+		},
+	})
+}
+```
+
+Apply migrations:
+
+```bash
+krew migrate up
+```
+
+### 4. Developer Authentication
+
+Authenticate your developer session with Krewire Auth:
+
+```bash
+krew auth login --token <token>
+krew auth status
+krew auth logout
+```
+
+### 5. Running as an MCP Server
 
 Start Krew in Model Context Protocol (MCP) server mode over standard input/output (stdio):
 
 ```bash
-./bin/krew mcp
+./bin/krew mcp --stdio
 ```
 
 This command allows modern AI IDEs (Antigravity, Cursor, Claude Desktop) to connect to Krew and consume its tool capabilities.
-
-## Embedding Krew in Your Go Application
-
-Import `github.com/krewire/krewire/pkg/ai/embed` directly:
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"github.com/krewire/krewire/pkg/ai/embed"
-	"github.com/krewire/krewire/pkg/ai/persona"
-)
-
-func main() {
-	agent, err := embed.New(embed.Config{
-		Persona: persona.CodingAssistant,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	res, err := agent.Execute(context.Background(), "Summarize current directory")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(res)
-}
-```
-
-## Running Tests
-
-Run the full automated test suite:
-
-```bash
-go test -v ./...
-```

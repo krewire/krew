@@ -3,53 +3,74 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/krewire/krew.svg)](https://pkg.go.dev/github.com/krewire/krew)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
-**Krew** is the unified developer toolchain and command-line driver for the entire Krewire digital SDLC ecosystem. It orchestrates project scaffolding, live reloading, production compilation, asset bundling, database migrations, quality gate verifications, and IDE Model Context Protocol (MCP) integrations.
+**Krew** (`github.com/krewire/krew`) is the unified developer toolchain and command-line driver for the entire Krewire digital SDLC ecosystem. It orchestrates project scaffolding, live reloading, production compilation, asset bundling, typed database migrations, quality gate verification, developer authentication, and Model Context Protocol (MCP) integrations.
 
-> **Note**: All autonomous AI agent packages, reasoning loops, and provider adapters have moved to the foundational core monorepo: [`github.com/krewire/krewire/pkg/ai`](https://github.com/krewire/krewire/tree/main/pkg/ai).
+> **Architecture Notice**: All autonomous AI agent packages, reasoning loops, and provider adapters are located in the foundational core monorepo: [`github.com/krewire/krewire/pkg/ai`](https://github.com/krewire/krewire/tree/main/pkg/ai).
+
+---
+
+## Documentation Index
+
+- [Architecture & Design](docs/architecture.md): CLI composition root (`cmd/krew`), command domains, internal dashboard subsystem (`internal/dashboard`), and private-by-default modularity.
+- [Getting Started](docs/getting-started.md): Installation, project creation, database migrations, developer authentication, and local development.
+- [Contributing Guide](docs/contributing.md): Quality gates, pure-Go invariant, and command contribution guidelines.
 
 ---
 
 ## Core Workflow Commands
 
+### 1. Project & Workspace Creation
 - `krew new <name> [--site|--book|--cli|--app]` — Scaffold a new project from authoritative templates.
-- `krew init` — Equip Krewire into an existing directory.
+- `krew init [--site|--book|--app]` — Equip Krewire into an existing directory.
+- `krew add <package>` — Add dependencies, plugins, or UI components (`ui/<component>`, `ui:<pack>`).
+- `krew remove <package>` — Remove a project dependency or plugin.
+- `krew update` — Update project dependencies across the workspace.
+- `krew ws` — Monorepo and multi-repo workspace management (`go.work`).
+
+### 2. Development, Build & Servicing
 - `krew dev` — Live development server with hot reload and file watching.
 - `krew build` — Static site generation, application binary compilation, and infrastructure bundles.
 - `krew bundle` — CSS and JS static asset bundling with minification.
 - `krew serve` — Preview production output from `.krewire/build`.
-- `krew run` — Execute tasks or arbitrary Go source files with runtime context.
+- `krew run [task|file.go]` — Execute runnable tasks or arbitrary Go source files with runtime context.
+- `krew dash` — Launch local development dashboard, metrics, and virtual workspace sandboxes.
+
+### 3. Database & Migrations
+- `krew make migration <name>` — Generate a new typed Laravel-style Go migration in `database/migrations/<timestamp>_<name>.go` with programmatic `schema.Blueprint`.
+- `krew migrate [up|down|redo|status]` — Apply, roll back, or inspect database schema migrations.
+- `krew seed [--class=<Seeder>]` — Seed the database with records via Go seeders and factories (`db:seed`).
+
+### 4. Quality Gates & Diagnostics
 - `krew test` — Run unit and integration tests.
-- `krew verify` — Run reproducible quality gates and emit verifiable task records.
-- `krew vet` — Static analysis, schema linting, and vulnerability scanning.
-- `krew fmt` — Enforce Go formatting standards.
-- `krew make <kind> <Name>` — Generate components, pages, models, migrations, or seeders.
-- `krew migrate [up|down|status]` — Database schema migration management.
-- `krew seed` — Database seeders and factory runners.
-- `krew ui` — Browse, install, and diff `.kiw` Pop-Brutalist UI components.
-- `krew pkg` — Package management for standalone `.kiw` component bundles.
-- `krew dash` — Launch local development dashboard and sandbox environments.
-- `krew gateway` — Local edge API gateway reverse proxy.
-- `krew mcp` — Native Model Context Protocol (MCP) server for IDE coding assistants.
-- `krew ws` — Monorepo and multi-repo workspace management (`go.work`).
+- `krew verify` — Run reproducible quality gates and emit verifiable task records (`--json`).
+- `krew vet` — Static analysis, schema linting, and vulnerability scanning (`--sec`, `--vuln`).
+- `krew fmt` — Enforce Go formatting standards (`--write`).
+- `krew doctor` — Diagnose developer environment, toolchain prerequisites, and workspace.
+- `krew compat` — Check version compatibility across all ecosystem modules.
+- `krew config` — Validate `krewire.yaml` against its canonical JSON Schema.
+
+### 5. Developer Authentication & Identity
+- `krew auth login [--token=<token>]` — Authenticate developer credentials against Krewire Auth.
+- `krew auth logout` — Remove active developer credentials.
+- `krew auth status` — Display current authentication identity and active session token.
+
+### 6. AI Agent & MCP Integration
+- `krew chat` — Start an interactive AI coding session in the terminal.
+- `krew agent <prompt> [--brief=<path>] [--sdlc]` — Execute an autonomous task or prompt headless to completion.
+- `krew mcp [--stdio]` — Native Model Context Protocol (MCP) server for IDE coding assistants.
 - `krew boost` — Scaffold Boost AI agent configuration (`AGENTS.md`, `.cursor/rules`, etc.).
 
 ---
 
-## AI Agent SDK
+## Local Development Database Container
 
-For the autonomous AI agent engine, ReAct reasoning loops, memory compactor, and LLM providers, import directly from the core library:
+For local development with PostgreSQL, start the official `krewire-db` container:
 
-```go
-import (
-    "github.com/krewire/krewire/pkg/ai"
-    "github.com/krewire/krewire/pkg/ai/agent"
-    "github.com/krewire/krewire/pkg/ai/assistant"
-    "github.com/krewire/krewire/pkg/ai/embed"
-    "github.com/krewire/krewire/pkg/ai/providers"
-)
+```bash
+docker compose -f ../cloud/docker-compose.yml up -d krewire-db
 ```
 
-CLI commands for interactive AI sessions (`chat`, `agent`, `daemon`, `sessions`, `export`) are provided via `krewire/cmd/ai`.
+This binds PostgreSQL 17 to `127.0.0.1:5432` with credentials defined in `cloud/.env`.
 
 ---
 

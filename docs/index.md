@@ -1,17 +1,18 @@
 # Krew — Developer & Contributor Documentation
 
-Welcome to the **Krew** repository documentation. This repository (`github.com/krewire/krew`) implements the platform-agnostic, embeddable autonomous AI agent engine for the Krewire ecosystem.
+Welcome to the **Krew** repository documentation. This repository (`github.com/krewire/krew`) implements the unified developer toolchain, CLI driver, and Model Context Protocol (MCP) server for the Krewire digital SDLC ecosystem.
 
 ## Documentation Index
 
-- [Getting Started](getting-started.md): Installation, local setup, building the `krew` CLI, running in embedded Go programs, and local testing.
-- [Architecture & Design](architecture.md): Core agent execution loop (`pkg/agent`), memory management (`pkg/memory`), tool registry (`pkg/tools`), personas (`pkg/persona`), and transport adapters (`pkg/transport`).
+- [Architecture & Design](architecture.md): CLI composition root (`cmd/krew`), internal dashboard subsystem (`internal/dashboard`), command execution domains, and private-by-default modularity.
+- [Getting Started](getting-started.md): Installation, local setup, building the `krew` CLI, project scaffolding, database migrations, and developer authentication.
 - [Contributing Guide](contributing.md): Contribution guidelines, testing requirements, quality gates, and code standards.
 
-## Core Features & Interfaces
+## Core Capabilities
 
-- **Platform-Agnostic Embeddability**: Embed directly into any Go microservice with zero framework lock-in via `pkg/embed`.
-- **Stand-Alone CLI**: Interactive terminal assistant (`krew chat`) and headless command-line execution (`krew run`).
-- **Model Context Protocol (MCP)**: Native support for Anthropic's Model Context Protocol, enabling Krew to connect seamlessly to IDEs (Cursor, Claude Desktop, Antigravity) as an MCP server.
-- **HTTP / Server-Sent Events (SSE)**: Microservice mode streaming real-time agent thoughts and tool executions over HTTP.
-- **Pluggable Personas & Tooling**: Declarative persona system with structured tool registries and safety policy gating.
+- **Unified Developer CLI**: Standard entrypoint across all 8 software workload kinds (`app`, `cli`, `site`, `book`, `worker`, `service`, `gateway`, `infra`).
+- **Typed Database Migrations**: Laravel-style Go migrations generated with `krew make migration <name>` and managed via `krew migrate`.
+- **Developer Authentication**: Seamless identity session management (`krew auth login`, `krew auth logout`, `krew auth status`).
+- **Internal Dev Dashboard**: Standalone dashboard HTTP server (`internal/dashboard`) providing real-time telemetry over Server-Sent Events (SSE).
+- **Model Context Protocol (MCP)**: Native stdio and HTTP MCP server exposing tool capabilities to IDE coding assistants (Cursor, Antigravity, Claude Desktop).
+- **Hermetic Scaffolding**: Declarative project bootstrapping and template equipping via `internal/scaffold`.
