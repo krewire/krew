@@ -100,6 +100,39 @@ func migrationTemplate(name, createdAt string) string {
 func goMigrationTemplate(pkgName, version, slug string) string {
 	if m := reCreate.FindStringSubmatch(slug); len(m) == 2 {
 		table := m[1]
+		if table == "users" {
+			return fmt.Sprintf(`package %s
+
+import (
+	"context"
+
+	"github.com/krewire/krewire/pkg/orm/migrate"
+	"github.com/krewire/krewire/pkg/orm/schema"
+)
+
+func init() {
+	migrate.Register(&migrate.GoMigration{
+		Version: "%s",
+		Name:    "%s",
+		Up: func(ctx context.Context, s *schema.Builder) error {
+			return s.Create("%s", func(table *schema.Blueprint) {
+				table.ID()
+				table.String("name", 255).NotNull()
+				table.String("email", 255).Unique().NotNull()
+				table.Timestamp("email_verified_at").Nullable()
+				table.String("password", 255).NotNull()
+				table.RememberToken()
+				table.Timestamps()
+			})
+		},
+		Down: func(ctx context.Context, s *schema.Builder) error {
+			return s.DropIfExists("%s")
+		},
+	})
+}
+`, pkgName, version, slug, table, table)
+		}
+
 		return fmt.Sprintf(`package %s
 
 import (
@@ -146,12 +179,12 @@ func init() {
 		Name:    "%s",
 		Up: func(ctx context.Context, s *schema.Builder) error {
 			return s.Table("%s", func(table *schema.Blueprint) {
-				// Modify table schema here (e.g. table.String("%s", 255).Nullable())...
+				table.String("%s", 255).Nullable()
 			})
 		},
 		Down: func(ctx context.Context, s *schema.Builder) error {
 			return s.Table("%s", func(table *schema.Blueprint) {
-				// Revert schema changes here (e.g. table.DropColumn("%s"))...
+				table.DropColumn("%s")
 			})
 		},
 	})
@@ -174,10 +207,15 @@ func init() {
 		Name:    "%s",
 		Up: func(ctx context.Context, s *schema.Builder) error {
 			// Write forward schema changes here:
+			// return s.Create("example", func(table *schema.Blueprint) {
+			// 	table.ID()
+			// 	table.Timestamps()
+			// })
 			return nil
 		},
 		Down: func(ctx context.Context, s *schema.Builder) error {
 			// Write rollback schema changes here:
+			// return s.DropIfExists("example")
 			return nil
 		},
 	})
@@ -199,6 +237,16 @@ import (
 // Up applies all registered Go migrations to db.
 func Up(ctx context.Context, db *orm.DB) error {
 	return migrate.UpGo(ctx, db)
+}
+
+// Down rolls back the last registered Go migration (or n steps).
+func Down(ctx context.Context, db *orm.DB, steps ...int) error {
+	return migrate.DownGo(ctx, db, steps...)
+}
+
+// Status returns the migration status for all registered Go migrations.
+func Status(ctx context.Context, db *orm.DB) ([]migrate.Status, error) {
+	return migrate.StatusGo(ctx, db)
 }
 `, pkgName, pkgName)
 }

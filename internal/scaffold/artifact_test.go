@@ -54,9 +54,9 @@ func TestMakeArtifact(t *testing.T) {
 		if err := MakeArtifact(tmpDir, "migration", "create_users"); err != nil {
 			t.Fatalf("MakeArtifact migration failed: %v", err)
 		}
-		files, err := os.ReadDir(filepath.Join(tmpDir, "migrations"))
+		files, err := os.ReadDir(filepath.Join(tmpDir, "database", "migrations"))
 		if err != nil || len(files) == 0 {
-			t.Fatalf("expected migration file in migrations dir, got %v", files)
+			t.Fatalf("expected migration file in database/migrations dir, got %v", files)
 		}
 		var foundGo bool
 		for _, f := range files {
@@ -75,9 +75,9 @@ func TestMakeArtifact(t *testing.T) {
 		if err := MakeArtifact(tmpDir, "migration", "create_orders.sql"); err != nil {
 			t.Fatalf("MakeArtifact migration with .sql failed: %v", err)
 		}
-		files, err := os.ReadDir(filepath.Join(tmpDir, "migrations"))
+		files, err := os.ReadDir(filepath.Join(tmpDir, "database", "migrations"))
 		if err != nil || len(files) == 0 {
-			t.Fatalf("expected migration file in migrations dir, got %v", files)
+			t.Fatalf("expected migration file in database/migrations dir, got %v", files)
 		}
 		var foundSQL bool
 		for _, f := range files {

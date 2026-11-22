@@ -77,6 +77,9 @@ func Make(root, kind, name string) error {
 				dir = db.Migrations
 			}
 		}
+		if dir == config.DefaultMigrationsDir && !hasDir(root, "database/migrations") && hasDir(root, "migrations") {
+			dir = "migrations"
+		}
 		_, err := scaffold.MakeMigration(root, dir, name)
 		return err
 	}

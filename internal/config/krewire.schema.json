@@ -824,7 +824,7 @@
         "migrations": {
           "type": "string",
           "description": "Migrations directory, relative to the project root (where `krew make migration` writes).",
-          "default": "migrations"
+          "default": "database/migrations"
         },
         "seeds": {
           "type": "string",

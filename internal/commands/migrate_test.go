@@ -74,13 +74,13 @@ func TestMigrate_EndToEndInNewApp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if out, code := runMigrate(t, "create", "create_products.sql"); code != errs.ExitCodeSuccess || !strings.Contains(out, "created migrations/") {
+	if out, code := runMigrate(t, "create", "create_products.sql"); code != errs.ExitCodeSuccess || !strings.Contains(out, "created database/migrations/") {
 		t.Fatalf("create = %v %q", code, out)
 	}
 	if _, code := runMigrate(t, "create", "add_price.sql"); code != errs.ExitCodeSuccess {
 		t.Fatalf("second create = %v", code)
 	}
-	migrations := filepath.Join(project, "migrations")
+	migrations := filepath.Join(project, "database", "migrations")
 	fillMigration(t, migrations, "create_products", "CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL);", "DROP TABLE products;")
 	fillMigration(t, migrations, "add_price", "ALTER TABLE products ADD COLUMN price INTEGER NOT NULL DEFAULT 0;", "ALTER TABLE products DROP COLUMN price;")
 
@@ -185,11 +185,11 @@ func TestMigrate_GoMigrations_EndToEnd(t *testing.T) {
 	}
 
 	// Create Laravel-style Go migration by default (no .sql extension)
-	if out, code := runMigrate(t, "create", "create_posts_table"); code != errs.ExitCodeSuccess || !strings.Contains(out, "created migrations/") {
+	if out, code := runMigrate(t, "create", "create_posts_table"); code != errs.ExitCodeSuccess || !strings.Contains(out, "created database/migrations/") {
 		t.Fatalf("create = %v %q", code, out)
 	}
 
-	matches, _ := filepath.Glob(filepath.Join(project, "migrations", "*_create_posts_table.go"))
+	matches, _ := filepath.Glob(filepath.Join(project, "database", "migrations", "*_create_posts_table.go"))
 	if len(matches) != 1 {
 		t.Fatalf("expected one *_create_posts_table.go, got: %v", matches)
 	}
@@ -290,5 +290,19 @@ func TestRoundDuration(t *testing.T) {
 	}
 	if got := roundDuration(1500 * time.Microsecond); got != 2*time.Millisecond {
 		t.Errorf("millisecond rounding = %s", got)
+	}
+}
+
+func TestMigrate_LegacyDirFallback(t *testing.T) {
+	dir := t.TempDir()
+	chdir(t, dir)
+	writeFile(t, filepath.Join(dir, "krewire.yaml"), "project:\n  name: legacy\n  kind: app\ndatabase:\n  driver: sqlite\n  dsn: legacy.db\n")
+	legacyDir := filepath.Join(dir, "migrations")
+	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, code := runMigrate(t, "create", "legacy_init.sql"); code != errs.ExitCodeSuccess || !strings.Contains(out, "created migrations/") {
+		t.Fatalf("create in legacy project must fallback to migrations/: %v %q", code, out)
 	}
 }

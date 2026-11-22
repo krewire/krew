@@ -13,7 +13,7 @@ import (
 const DefaultDatabaseDriver = "sqlite"
 
 // DefaultMigrationsDir is where `krew make migration` writes migration files.
-const DefaultMigrationsDir = "migrations"
+const DefaultMigrationsDir = "database/migrations"
 
 // DefaultSeedsDir is where `krew make seeder` writes seed files.
 const DefaultSeedsDir = "seeds"

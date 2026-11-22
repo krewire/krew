@@ -22,7 +22,7 @@ commands:
   down [n]        roll back the last n applied migrations (default 1)
   redo            roll back the last migration and apply it again
   status          list migrations and their state
-  create <name>   create migrations/<timestamp>_<name>.go (use .sql for raw SQL)
+  create <name>   create database/migrations/<timestamp>_<name>.go (use .sql for raw SQL)
 
 The database comes from --dsn/--driver, else APP_DATABASE_DSN/APP_DATABASE_DRIVER
 (.env is loaded), else database.dsn/database.driver in krewire.yaml.`
@@ -31,7 +31,7 @@ The database comes from --dsn/--driver, else APP_DATABASE_DSN/APP_DATABASE_DRIVE
 func RegisterMigrate(fs *flag.FlagSet) {
 	fs.String("dsn", "", "database DSN (overrides APP_DATABASE_DSN and database.dsn)")
 	fs.String("driver", "", "database/sql driver (overrides APP_DATABASE_DRIVER and database.driver; default sqlite)")
-	fs.String("dir", "", "migrations directory (overrides APP_DATABASE_MIGRATIONS and database.migrations; default migrations)")
+	fs.String("dir", "", "migrations directory (overrides APP_DATABASE_MIGRATIONS and database.migrations; default database/migrations)")
 	fs.Duration("lock-timeout", migrate.DefaultLockTimeout, "how long to wait for another migration runner")
 }
 
@@ -127,9 +127,18 @@ func resolveMigrateDatabase(root string, fs *flag.FlagSet) (config.DatabaseConfi
 	if err := cfg.LoadDotEnv(root); err != nil {
 		return config.DatabaseConfig{}, err
 	}
-	return cfg.ResolveDatabase(os.LookupEnv, config.DatabaseConfig{
+	db, err := cfg.ResolveDatabase(os.LookupEnv, config.DatabaseConfig{
 		Driver:     flagValue(fs, "driver"),
 		DSN:        flagValue(fs, "dsn"),
 		Migrations: flagValue(fs, "dir"),
 	})
+	if err != nil {
+		return config.DatabaseConfig{}, err
+	}
+	if flagValue(fs, "dir") == "" && (cfg == nil || cfg.Database.Migrations == "") && os.Getenv("APP_DATABASE_MIGRATIONS") == "" {
+		if !hasDir(root, "database/migrations") && hasDir(root, "migrations") {
+			db.Migrations = "migrations"
+		}
+	}
+	return db, nil
 }

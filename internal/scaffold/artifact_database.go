@@ -9,7 +9,11 @@ import (
 )
 
 func generateMigration(root, name string) error {
-	_, err := MakeMigration(root, "migrations", name)
+	dir := filepath.Join("database", "migrations")
+	if !hasDir(root, filepath.Join("database", "migrations")) && hasDir(root, "migrations") {
+		dir = "migrations"
+	}
+	_, err := MakeMigration(root, dir, name)
 	return err
 }
 

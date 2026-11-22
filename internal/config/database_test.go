@@ -14,7 +14,7 @@ func TestResolveDatabasePrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != (DatabaseConfig{Driver: "sqlite", DSN: "app.db", Migrations: "migrations", Seeds: "seeds"}) {
+	if got != (DatabaseConfig{Driver: "sqlite", DSN: "app.db", Migrations: "database/migrations", Seeds: "seeds"}) {
 		t.Fatalf("yaml + defaults = %+v", got)
 	}
 
