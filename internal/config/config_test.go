@@ -63,7 +63,6 @@ func TestLoadFoldsProjectVersionIntoVersion(t *testing.T) {
 	dir := t.TempDir()
 	body := `project:
   name: krewire
-  kind: site
   version: "v0.1.0"
 `
 	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(body), 0o644); err != nil {
@@ -84,7 +83,7 @@ func TestLoadPrefersTopLevelVersion(t *testing.T) {
 	dir := t.TempDir()
 	body := `version: "2.0.0"
 project:
-  kind: site
+  name: krewire
   version: "v0.1.0"
 `
 	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(body), 0o644); err != nil {

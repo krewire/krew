@@ -219,20 +219,6 @@
           "type": "string",
           "description": "Project name."
         },
-        "kind": {
-          "type": "string",
-          "description": "Pins the workload kind; empty lets krew detect it from marker files.",
-          "enum": [
-            "app",
-            "cli",
-            "site",
-            "book",
-            "worker",
-            "service",
-            "gateway",
-            "infra"
-          ]
-        },
         "version": {
           "type": [
             "string",

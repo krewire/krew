@@ -49,7 +49,6 @@ func pinnedVersion(v string) string {
 func krewireYamlTemplate(name string) string {
 	return fmt.Sprintf(`project:
   name: %s
-  kind: app
   version: 0.1.0
 
 dev:

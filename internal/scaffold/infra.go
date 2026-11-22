@@ -33,7 +33,6 @@ func equipInfra(opts EquipOptions) ([]string, error) {
 func infraKrewireYamlTemplate(name string) string {
 	return fmt.Sprintf(`project:
   name: %s
-  kind: infra
   version: 0.1.0
 
 infra:

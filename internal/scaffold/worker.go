@@ -44,7 +44,6 @@ func equipWorker(opts EquipOptions) ([]string, error) {
 func workerKrewireYamlTemplate(name string) string {
 	return fmt.Sprintf(`project:
   name: %s
-  kind: worker
   version: 0.1.0
 
 worker:

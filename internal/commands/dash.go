@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/krewire/krew/internal/dashboard"
-	"github.com/krewire/krew/internal/shape"
 	"github.com/krewire/krewire/pkg/errs"
 	"github.com/krewire/tui/term"
 )
@@ -95,18 +94,7 @@ func runDashServer(fs *flag.FlagSet) errs.ExitCode {
 		return code
 	}
 
-	explicit := firstNonEmpty(flagValue(fs, "kind"), rt.cfg.Kind())
-	res, err := shape.Detect(rt.root, explicit)
-	var kind string
-	if err == nil && res.Kind != shape.KindNone {
-		kind = string(res.Kind)
-	} else if rt.cfg.Kind() != "" {
-		kind = rt.cfg.Kind()
-	} else {
-		kind = "app"
-	}
-
-	srv := dashboard.NewServer(rt.root, rt.cfg, kind, string(rt.env), host, port)
+	srv := dashboard.NewServer(rt.root, rt.cfg, string(rt.env), host, port)
 	if err := srv.Start(); err != nil {
 		return fail(err)
 	}
@@ -125,7 +113,7 @@ func runDashServer(fs *flag.FlagSet) errs.ExitCode {
 	info := srv.CollectInfo()
 
 	fmt.Printf("\n  %s\n", boldCyan("Krewire Dev Dashboard"))
-	fmt.Printf("  %s %s (kind: %s, env: %s)\n", dim("Project:    "), info.Name, info.Kind, info.Env)
+	fmt.Printf("  %s %s (env: %s)\n", dim("Project:    "), info.Name, info.Env)
 	fmt.Printf("  %s http://%s\n", dim("Dashboard:  "), green(addr))
 	fmt.Printf("  %s http://%s/api/health\n", dim("Health API: "), addr)
 	fmt.Printf("  %s http://%s/api/metrics\n", dim("Metrics API:"), addr)

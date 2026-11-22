@@ -63,13 +63,9 @@ func RunDeploy(fs *flag.FlagSet) errs.ExitCode {
 	if err != nil {
 		return fail(err)
 	}
-	res, err := shape.Detect(root, cfg.Kind())
+	res, err := shape.Detect(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "krew: "+err.Error())
-		return errs.ExitCodeUsage
-	}
-	if res.Kind == shape.KindNone {
-		fmt.Fprintln(os.Stderr, "krew deploy: no project found — run 'krew new <project>' first")
 		return errs.ExitCodeUsage
 	}
 
@@ -89,7 +85,7 @@ func RunDeploy(fs *flag.FlagSet) errs.ExitCode {
 	}
 	slog.Info("staging deploy artifacts", "dist", dist)
 
-	if (res.Kind == shape.KindApp || res.Kind == shape.KindCLI || res.Kind == shape.KindWorker || res.Kind == shape.KindService) && (target == "binary" || target == "systemd") {
+	if res.Capabilities.HasApp && (target == "binary" || target == "systemd") {
 		if code := buildBinary(root, dist); code != errs.ExitCodeSuccess {
 			return code
 		}

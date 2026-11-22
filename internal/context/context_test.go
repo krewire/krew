@@ -24,7 +24,6 @@ go 1.23.0
 	// 2. Create krewire.yaml
 	krewireYamlContent := `project:
   name: testapp
-  kind: app
 `
 	if err := os.WriteFile(filepath.Join(tempDir, "krewire.yaml"), []byte(krewireYamlContent), 0644); err != nil {
 		t.Fatalf("failed to write krewire.yaml: %v", err)
@@ -47,9 +46,6 @@ go 1.23.0
 
 	if ctx.Name != "testapp" {
 		t.Errorf("expected name 'testapp', got %q", ctx.Name)
-	}
-	if ctx.Workload != model.KindApp {
-		t.Errorf("expected workload 'app', got %q", ctx.Workload)
 	}
 	if ctx.ModulePath != "example.com/testapp" {
 		t.Errorf("expected module path 'example.com/testapp', got %q", ctx.ModulePath)

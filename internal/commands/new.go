@@ -34,16 +34,11 @@ func RunNew(fs *flag.FlagSet) errs.ExitCode {
 	if name == "" && shouldPrompt(fs) {
 		r := bufio.NewReader(promptIn)
 		name = ask(r, "Project name", "")
-		if name != "" && !hasKindFlag(fs) {
-			if kind := askKind(r, "app", false); kind != "" {
-				_ = fs.Set(kind, "true")
-			}
-		}
 	}
 	if name == "" {
-		fmt.Fprintln(os.Stderr, "usage: krew new <project> [--site|--book|--cli|--app|--worker|--service|--gateway|--infra|--template <git-url>]")
+		fmt.Fprintln(os.Stderr, "usage: krew new <project> [--template <git-url>]")
 		fmt.Fprintln(os.Stderr, "  krew new creates a new directory; to set up the current directory use 'krew init'")
-		fmt.Fprintln(os.Stderr, "  run it in a terminal without arguments to be asked for the name and kind")
+		fmt.Fprintln(os.Stderr, "  run it in a terminal without arguments to be asked for the name")
 		return errs.ExitCodeUsage
 	}
 

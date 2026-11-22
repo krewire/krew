@@ -230,14 +230,6 @@ func (c *Config) IsSSG() bool {
 	return c != nil && c.SSG != nil
 }
 
-// Kind returns the pinned project kind from config, or "" when unset.
-func (c *Config) Kind() string {
-	if c == nil {
-		return ""
-	}
-	return c.Project.Kind
-}
-
 // APIURL returns the effective API Gateway endpoint, respecting KREWIRE_API_URL.
 func (c *Config) APIURL() string {
 	if env := os.Getenv("KREWIRE_API_URL"); env != "" {
@@ -297,19 +289,7 @@ func (c *Config) EffectiveEnvFile() string {
 type Project struct {
 	// Name is the project name.
 	Name string `yaml:"name"`
-	// Kind pins the project kind (see pkg/model/workload.go AllKinds:
-	// "app", "cli", "site", "book", "worker", "service", "gateway", or
-	// "infra"). Empty lets the CLI detect it from marker files.
-	Kind string `yaml:"kind"`
-	// Version is the product version declared next to the kind, the way a
-	// project writes it:
-	//
-	//	project:
-	//	  kind: site
-	//	  version: v0.1.0
-	//
-	// Load folds it into Config.Version when no top-level `version:` is set,
-	// so the version has one effective value regardless of where it is declared.
+	// Version is the product version declared in project settings.
 	Version string `yaml:"version"`
 	// Author is the project author or team.
 	Author string `yaml:"author"`

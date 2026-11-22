@@ -28,7 +28,7 @@ func RunInfo(_ *flag.FlagSet) errs.ExitCode {
 	}
 	mod, _ := gomod.Find(dir)
 	cfg, _ := config.Load(dir)
-	res, err := shape.Detect(dir, cfg.Kind())
+	res, err := shape.Detect(dir)
 	if err != nil {
 		return fail(err)
 	}
@@ -65,13 +65,8 @@ func RunInfo(_ *flag.FlagSet) errs.ExitCode {
 	}
 	printKV(tm, "Module path", modulePath, dim)
 	printKV(tm, "Built on Krewire", usesKrewire, dim)
-	kindStr := cyan(res.String())
-	if res.Kind == shape.KindNone {
-		kindStr = yellow(res.String())
-	}
-	printKV(tm, "Project kind", kindStr, dim)
 	if res.Marker != "" {
-		printKV(tm, "Detected by", dim(res.Marker), dim)
+		printKV(tm, "Structure", dim(res.Marker), dim)
 	}
 
 	if len(cfg.Scripts) > 0 {
@@ -87,7 +82,7 @@ func RunInfo(_ *flag.FlagSet) errs.ExitCode {
 		}
 	}
 
-	if res.Kind == shape.KindApp {
+	if res.Capabilities.HasApp {
 		fmt.Println()
 		fmt.Println(boldDim("─ Directories ────────────────────────────────"))
 		printAppDirsStyled(dir, cfg, tm)
@@ -112,7 +107,7 @@ func RunInfo(_ *flag.FlagSet) errs.ExitCode {
 		fmt.Println()
 		fmt.Println(boldDim("─ Co-located Krewire ─────────────────────────"))
 		for _, cp := range colocated {
-			desc := cyan(cp.Kind)
+			desc := cyan(cp.Name)
 			if cp.ModulePath != "" {
 				desc += " " + dim("("+cp.ModulePath+")")
 			}

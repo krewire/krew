@@ -33,7 +33,6 @@ const (
 type Server struct {
 	root      string
 	cfg       *config.Config
-	kind      string
 	env       string
 	host      string
 	port      string
@@ -42,11 +41,10 @@ type Server struct {
 	server    *http.Server
 }
 
-func NewServer(root string, cfg *config.Config, kind, env, host, port string) *Server {
+func NewServer(root string, cfg *config.Config, env, host, port string) *Server {
 	return &Server{
 		root:      root,
 		cfg:       cfg,
-		kind:      kind,
 		env:       env,
 		host:      host,
 		port:      port,
@@ -128,8 +126,7 @@ func (d *Server) CollectInfo() ProjectInfo {
 	workers := discoverWorkers(d.cfg)
 
 	cfgMap := map[string]any{
-		"kind": d.kind,
-		"env":  d.env,
+		"env": d.env,
 	}
 	if d.cfg != nil {
 		cfgMap["title"] = d.cfg.Title
@@ -148,7 +145,6 @@ func (d *Server) CollectInfo() ProjectInfo {
 
 	return ProjectInfo{
 		Name:      name,
-		Kind:      d.kind,
 		Env:       d.env,
 		Root:      d.root,
 		Version:   ver,
@@ -205,7 +201,6 @@ func (d *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	metrics := d.CollectMetrics()
 	res := HealthResponse{
 		Status:        "ok",
-		Kind:          d.kind,
 		UptimeSeconds: metrics.UptimeSeconds,
 		Goroutines:    metrics.Goroutines,
 		MemoryMB:      metrics.AllocMB,

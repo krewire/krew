@@ -169,16 +169,17 @@ func runProjectRelease(bump release.BumpKind, track release.Track) errs.ExitCode
 		fmt.Fprintln(os.Stderr, err)
 		return errs.ExitCodeFailure
 	}
+	if _, err := os.Stat(filepath.Join(dir, config.ConfigFileName)); err != nil {
+		fmt.Fprintln(os.Stderr, "release: not a Krewire project (no krewire.yaml found); run inside your project, or use --module/--all inside the Krewire workspace")
+		return errs.ExitCodeUsage
+	}
 	cfg, err := config.Load(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return errs.ExitCodeFailure
 	}
-	res, _ := shape.Detect(dir, cfg.Kind())
-	if res.Kind == shape.KindNone {
-		fmt.Fprintln(os.Stderr, "release: not a Krewire project (no krewire.yaml with project.kind); run inside your project, or use --module/--all inside the Krewire workspace")
-		return errs.ExitCodeUsage
-	}
+	res, _ := shape.Detect(dir)
+	_ = res
 
 	cur := cfg.Version
 	prefix := ""
@@ -201,7 +202,7 @@ func runProjectRelease(bump release.BumpKind, track release.Track) errs.ExitCode
 	if releaseApply {
 		label = "APPLY"
 	}
-	fmt.Printf("%s: release %s project %q %s -> %s\n", tm.Paint(label, term.ColorDefault, []term.Style{term.StyleBold}), res.Kind, dir, cur, newVer)
+	fmt.Printf("%s: release project %q %s -> %s\n", tm.Paint(label, term.ColorDefault, []term.Style{term.StyleBold}), dir, cur, newVer)
 	fmt.Printf("  • %s\n    %s\n", tm.Paint("krewire.yaml", term.ColorCyan, nil), fmt.Sprintf("version %s -> %s", cur, newVer))
 
 	if releaseApply {

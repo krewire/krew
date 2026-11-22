@@ -44,7 +44,6 @@ func equipService(opts EquipOptions) ([]string, error) {
 func serviceKrewireYamlTemplate(name string) string {
 	return fmt.Sprintf(`project:
   name: %s
-  kind: service
   version: 0.1.0
 
 service:

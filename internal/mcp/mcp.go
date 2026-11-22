@@ -511,11 +511,7 @@ func (s *Server) collectInfo() map[string]any {
 		name = filepath.Base(s.root)
 	}
 
-	explicit := ""
-	if s.config != nil {
-		explicit = s.config.Kind()
-	}
-	res, _ := shape.Detect(s.root, explicit)
+	res, _ := shape.Detect(s.root)
 
 	var svcs []map[string]any
 	if s.config != nil {

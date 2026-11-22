@@ -73,12 +73,12 @@ var CanonicalInventory = []BenchmarkItem{
 	{
 		ID:           "CORE-MOD-001",
 		Category:     CategoryCorePrimitive,
-		Name:         "Model & Kind Dependency Resolution",
-		Fixture:      "Multi-workload dependency graph",
+		Name:         "Project Model Validation",
+		Fixture:      "Project configuration topology",
 		TargetNs:     1_000_000, // 1 ms
 		TargetBytes:  100_000,   // 100 KB
 		TargetAllocs: 500,
-		Rationale:    "Validates project graph topology, downward dependency rules, and opt-in batteries.",
+		Rationale:    "Validates project graph topology and downward dependency rules.",
 	},
 	{
 		ID:           "CORE-KIW-001",

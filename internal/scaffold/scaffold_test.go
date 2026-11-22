@@ -182,7 +182,6 @@ func TestEquipApp(t *testing.T) {
 	assertFileContains(t, filepath.Join(dir, "main.go"), "config.LoadMetadata")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "var Signature = \"build with krewire\"")
 	assertFileNotContains(t, filepath.Join(dir, "main.go"), "cfg.yaml")
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: app")
 	assertFileContains(t, filepath.Join(dir, "internal/app/app.go"), "func New(meta *config.Metadata) (*rvweb.App, error)")
 	for _, path := range []string{
 		"internal/config/config.go",
@@ -247,7 +246,6 @@ func TestEquipCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertFileContains(t, filepath.Join(dir, "go.mod"), "module example.com/demo")
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: cli")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "var Signature = \"build with krewire\"")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "tui.NewApp")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "internal/commands")
@@ -283,7 +281,6 @@ func TestEquipStatic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: site")
 	assertFileContains(t, filepath.Join(dir, "pages/index.kiw"), "My Site")
 	assertFileContains(t, filepath.Join(dir, "layouts/Base.kiw"), "{{.Content}}")
 	assertFileContains(t, filepath.Join(dir, "components/Hero.kiw"), "Getting Started")
@@ -309,7 +306,6 @@ func TestEquipBook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: book")
 	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "title: My Book")
 	assertFileContains(t, filepath.Join(dir, "content/docs/01-introduction.md"), "# Introduction")
 	if _, err := os.Stat(filepath.Join(dir, "main.go")); !os.IsNotExist(err) {
@@ -576,7 +572,6 @@ func TestEquip_Worker(t *testing.T) {
 		t.Fatal("expected files created")
 	}
 
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: worker")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "cloud/worker")
 	assertFileContains(t, filepath.Join(dir, "internal", "jobs", "jobs.go"), "ExampleJob")
 }
@@ -606,7 +601,6 @@ func TestEquip_Service(t *testing.T) {
 		t.Fatal("expected files created")
 	}
 
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: service")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "cloud/service/registry")
 	assertFileContains(t, filepath.Join(dir, "internal", "handler", "handler.go"), "func Health")
 }
@@ -636,7 +630,6 @@ func TestEquip_Gateway(t *testing.T) {
 		t.Fatal("expected files created")
 	}
 
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: gateway")
 	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "gateway:")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "pkg/web/gateway")
 	assertFileContains(t, filepath.Join(dir, "main.go"), "registry.NewMemoryRegistry()")
@@ -666,7 +659,6 @@ func TestEquip_Infra(t *testing.T) {
 		t.Fatal("expected files created")
 	}
 
-	assertFileContains(t, filepath.Join(dir, "krewire.yaml"), "kind: infra")
 	assertFileContains(t, filepath.Join(dir, "infra", "blueprint.go"), "DesiredResources")
 	// Verify placeholder main.go was removed for infra
 	if _, err := os.Stat(filepath.Join(dir, "main.go")); !os.IsNotExist(err) {

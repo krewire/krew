@@ -85,42 +85,20 @@ func RunServe(fs *flag.FlagSet) errs.ExitCode {
 	if code != errs.ExitCodeSuccess {
 		return code
 	}
-	explicit := firstNonEmpty(flagValue(fs, "kind"), rt.cfg.Kind())
-	res, err := shape.Detect(rt.root, explicit)
+	res, err := shape.Detect(rt.root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "krew: "+err.Error())
 		return errs.ExitCodeUsage
 	}
 
-	hasSSGShape := hasDir(rt.root, "pages") || rt.cfg.IsSSG()
-	hasBookShape := hasDir(rt.root, "content")
-
-	switch res.Kind {
-	case shape.KindApp:
+	if res.Capabilities.HasApp {
 		return runApp(rt, fs)
-	case shape.KindCLI:
-		return runCLI(rt, fs)
-	case shape.KindSite:
-		if hasSSGShape && hasBookShape {
-			return serveStaticBuild(rt.root, fs)
-		}
-		if rt.cfg.IsSSG() {
-			return serveSSG(fs, rt.cfg)
-		}
-		if hasDir(rt.root, "pages") {
-			return serveStaticBuild(rt.root, fs)
-		}
-		fmt.Fprintln(os.Stderr, "krew serve: site detected without an ssg: config")
-		return errs.ExitCodeUsage
-	case shape.KindBook:
-		if hasSSGShape && hasBookShape {
-			return serveStaticBuild(rt.root, fs)
-		}
-		return serveBook(rt.root, fs)
-	default:
-		fmt.Fprintln(os.Stderr, "krew serve: no project found — add a root main.go, an `ssg:` key in krewire.yaml, or a content/ directory")
-		return errs.ExitCodeUsage
 	}
+	if res.Capabilities.HasPages || rt.cfg.IsSSG() || res.Capabilities.HasBook {
+		return serveStaticBuild(rt.root, fs)
+	}
+	fmt.Fprintln(os.Stderr, "krew serve: no project found — add a root main.go, an `ssg:` key in krewire.yaml, or a content/ directory")
+	return errs.ExitCodeUsage
 }
 
 // serveBook previews the content directory with the book handler. The

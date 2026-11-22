@@ -27,7 +27,6 @@ func RegisterTier(fs *flag.FlagSet) {
 // TierReport summarizes the detected open-core tier for a project.
 type TierReport struct {
 	ProjectName   string       `json:"project_name"`
-	ProjectKind   string       `json:"project_kind"`
 	EffectiveTier model.Tier   `json:"effective_tier"`
 	AllTiers      []model.Tier `json:"ladder"`
 	Modules       []string     `json:"modules,omitempty"`
@@ -47,12 +46,8 @@ func RunTier(fs *flag.FlagSet) errs.ExitCode {
 	effectiveTier := model.TierFree
 
 	projectName := "workspace"
-	projectKind := "monorepo"
 	if cfg != nil && cfg.Project.Name != "" {
 		projectName = cfg.Project.Name
-	}
-	if cfg != nil && cfg.Project.Kind != "" {
-		projectKind = string(cfg.Project.Kind)
 	}
 
 	// Detect if project uses higher tier features
@@ -71,7 +66,6 @@ func RunTier(fs *flag.FlagSet) errs.ExitCode {
 
 	report := TierReport{
 		ProjectName:   projectName,
-		ProjectKind:   projectKind,
 		EffectiveTier: effectiveTier,
 		AllTiers:      model.AllTiers,
 		Modules:       detectedModules,
@@ -113,7 +107,6 @@ func RunTier(fs *flag.FlagSet) errs.ExitCode {
 
 	fmt.Printf("\n  %s — %s\n\n", boldCyan("Krewire Open Core Tier"), dim("single source of truth"))
 	fmt.Printf("  %s %s\n", dim("Project:       "), projectName)
-	fmt.Printf("  %s %s\n", dim("Workload Kind: "), projectKind)
 	fmt.Printf("  %s %s\n", dim("Effective Tier:"), green(string(effectiveTier)))
 	fmt.Printf("  %s %s\n", dim("Licensing:     "), green("MIT (100% Open Source, Forever)"))
 	fmt.Printf("  %s %s\n\n", dim("Boundary Gate: "), green("Compliant — No paid prerequisites for free tier"))

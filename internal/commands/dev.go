@@ -42,27 +42,26 @@ func RunDev(fs *flag.FlagSet) errs.ExitCode {
 		return code
 	}
 
-	explicit := firstNonEmpty(flagValue(fs, "kind"), rt.cfg.Kind())
-	res, err := shape.Detect(rt.root, explicit)
+	res, err := shape.Detect(rt.root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "krew: "+err.Error())
 		return errs.ExitCodeUsage
 	}
 
 	if res.IsPreInit() {
-		fmt.Fprintln(os.Stderr, "krew dev: project is not equipped yet — run 'krew init' to choose a starter")
+		fmt.Fprintln(os.Stderr, "krew dev: project is not equipped yet — run 'krew init' to initialize")
 		return errs.ExitCodeUsage
 	}
 
-	if res.Kind == shape.KindInfra {
-		fmt.Fprintln(os.Stderr, "krew dev: this is an infra project — use 'krew build --plan' or 'krew deploy' instead")
+	if res.Capabilities.HasInfra && !res.Capabilities.HasApp && !res.Capabilities.HasPages {
+		fmt.Fprintln(os.Stderr, "krew dev: this is an infra configuration — use 'krew build --plan' or 'krew deploy' instead")
 		return errs.ExitCodeUsage
 	}
 
-	if res.Capabilities.HasApp || res.Kind == shape.KindApp || res.Kind == shape.KindCLI || res.Kind == shape.KindWorker || res.Kind == shape.KindService || res.Kind == shape.KindGateway {
+	if res.Capabilities.HasApp {
 		return devApp(rt, fs)
 	}
-	if res.Capabilities.HasPages || res.Capabilities.HasBook || res.Kind == shape.KindSite || res.Kind == shape.KindBook {
+	if res.Capabilities.HasPages || res.Capabilities.HasBook {
 		return devSite(rt, fs)
 	}
 

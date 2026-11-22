@@ -22,7 +22,7 @@ func TestDashboardServer_Endpoints(t *testing.T) {
 	// 1. Create krewire.yaml with services
 	cfgContent := `
 project:
-  kind: site
+  name: test-hub
 title: "Krewire Test Hub"
 version: "1.0.0"
 runtime:
@@ -61,7 +61,7 @@ services:
 		t.Fatalf("failed to load config: %v", err)
 	}
 
-	srv := dashboard.NewServer(dir, cfg, "site", "local", "127.0.0.1", "4000")
+	srv := dashboard.NewServer(dir, cfg, "local", "127.0.0.1", "4000")
 	handler := srv.Handler()
 
 	// Subtest 1: GET / (HTML Dev Dashboard)
@@ -129,9 +129,6 @@ services:
 		if info.Name != "Krewire Test Hub" {
 			t.Errorf("expected Name 'Krewire Test Hub', got %q", info.Name)
 		}
-		if info.Kind != "site" {
-			t.Errorf("expected Kind 'site', got %q", info.Kind)
-		}
 		if info.Env != "local" {
 			t.Errorf("expected Env 'local', got %q", info.Env)
 		}
@@ -190,9 +187,6 @@ services:
 		if h.Status != "ok" {
 			t.Errorf("expected status 'ok', got %q", h.Status)
 		}
-		if h.Kind != "site" {
-			t.Errorf("expected kind 'site', got %q", h.Kind)
-		}
 	})
 
 	// Subtest 6: GET /api/events (SSE)
@@ -238,7 +232,7 @@ func TestDashboardServer_Lifecycle(t *testing.T) {
 		Title: "Lifecycle Test",
 	}
 
-	srv := dashboard.NewServer(dir, cfg, "app", "local", "127.0.0.1", "0")
+	srv := dashboard.NewServer(dir, cfg, "local", "127.0.0.1", "0")
 	if err := srv.Start(); err != nil {
 		t.Fatalf("failed to start dashboard: %v", err)
 	}

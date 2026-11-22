@@ -1,9 +1,7 @@
-// Package shape classifies a project directory into one of the Krewire
-// project kinds so commands can dispatch to the right pipeline.
+// Package shape inspects a project directory to discover its capabilities.
 package shape
 
 import (
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -22,27 +20,11 @@ const (
 	EntryMainGo    = "main.go"
 )
 
-// Kind identifies a Krewire project kind. Re-exported from model for SSOT.
-type Kind = model.Kind
-
-const (
-	KindApp          = model.KindApp
-	KindCLI          = model.KindCLI
-	KindSite         = model.KindSite
-	KindBook         = model.KindBook
-	KindWorker       = model.KindWorker
-	KindService      = model.KindService
-	KindGateway      = model.KindGateway
-	KindInfra        = model.KindInfra
-	KindNone    Kind = ""
-)
-
 // MarkerPreInit is the marker reported for a project that only has the
-// pre-scaffold bootstrap layout. It is not a kind: the project must be equipped
-// with a variant before any workload command can run.
+// pre-scaffold bootstrap layout.
 const MarkerPreInit = "pre-init"
 
-// Capabilities captures every workload capability present in the project.
+// Capabilities captures every capability present in the project.
 type Capabilities struct {
 	HasApp     bool
 	HasPages   bool
@@ -56,27 +38,22 @@ type Capabilities struct {
 
 // Result is the outcome of a detection.
 type Result struct {
-	// Kind is the primary detected project kind.
-	Kind Kind
-	// Marker names the file or config key that determined the kind, e.g.
-	// "main.go" or "krewire.yaml#ssg".
-	Marker string
-	// Capabilities details the composable features discovered in the project.
+	Marker       string
 	Capabilities Capabilities
 }
 
 // IsPreInit reports whether the project is a pre-scaffold bootstrap that must
-// be equipped with a variant before any workload command can run.
+// be equipped with source code before any command can run.
 func (r Result) IsPreInit() bool {
-	return r.Kind == KindNone && r.Marker == MarkerPreInit
+	return r.Marker == MarkerPreInit
 }
 
 // String implements fmt.Stringer.
 func (r Result) String() string {
-	if r.Kind == KindNone {
-		return "none"
+	if r.Marker == "" {
+		return "krewire"
 	}
-	return string(r.Kind)
+	return r.Marker
 }
 
 // IsApp reports whether dir builds an application package main directly from
@@ -85,9 +62,8 @@ func IsApp(dir string) bool {
 	return isApp(dir)
 }
 
-// Detect classifies the project rooted at dir. explicitKind, when non-empty,
-// comes from config.project.kind and wins over any marker detection.
-func Detect(dir, explicitKind string) (Result, error) {
+// Detect inspects the project rooted at dir.
+func Detect(dir string, _ ...string) (Result, error) {
 	preInit := isPreInit(dir)
 	caps := Capabilities{
 		HasApp:     !preInit && isApp(dir),
@@ -100,54 +76,20 @@ func Detect(dir, explicitKind string) (Result, error) {
 		HasInfra:   hasYamlKey(dir, "infra"),
 	}
 
-	if explicitKind != "" {
-		parsed, err := model.ParseKind(explicitKind)
-		if err != nil {
-			return Result{Capabilities: caps}, fmt.Errorf("shape: unknown project kind %q", explicitKind)
-		}
-		return Result{Kind: parsed, Marker: "project.kind", Capabilities: caps}, nil
-	}
-
-	// 1. Explicit marker keys in krewire.yaml
-	if hasYamlKey(dir, "worker") {
-		return Result{Kind: KindWorker, Marker: "krewire.yaml#worker", Capabilities: caps}, nil
-	}
-	if hasYamlKey(dir, "service") {
-		return Result{Kind: KindService, Marker: "krewire.yaml#service", Capabilities: caps}, nil
-	}
-	if hasYamlKey(dir, "gateway") {
-		return Result{Kind: KindGateway, Marker: "krewire.yaml#gateway", Capabilities: caps}, nil
-	}
-	if hasYamlKey(dir, "infra") {
-		return Result{Kind: KindInfra, Marker: "krewire.yaml#infra", Capabilities: caps}, nil
-	}
-
-	// 2. Pre-scaffold bootstrap (go.mod + krewire.yaml + starter main.go).
-	// This is not a workload kind: the project must be equipped first.
 	if preInit {
-		return Result{Kind: KindNone, Marker: MarkerPreInit, Capabilities: caps}, nil
+		return Result{Marker: MarkerPreInit, Capabilities: caps}, nil
 	}
 
-	// 3. Application entry point
+	marker := "krewire"
 	if isApp(dir) {
-		return Result{Kind: KindApp, Marker: appMarker(dir), Capabilities: caps}, nil
+		marker = appMarker(dir)
+	} else if isDir(dir, "pages") {
+		marker = "pages/"
+	} else if isDir(dir, "content") {
+		marker = "content/"
 	}
 
-	// 4. Declarative SSG site (ssg: key in krewire.yaml, or pages/ directory)
-	if hasYamlKey(dir, "ssg") || isDir(dir, "pages") {
-		marker := "pages/"
-		if hasYamlKey(dir, "ssg") {
-			marker = ConfigFileName + "#ssg"
-		}
-		return Result{Kind: KindSite, Marker: marker, Capabilities: caps}, nil
-	}
-
-	// 5. Content documentation (book)
-	if isDir(dir, "content") {
-		return Result{Kind: KindBook, Marker: "content/", Capabilities: caps}, nil
-	}
-
-	return Result{Kind: KindNone, Capabilities: caps}, nil
+	return Result{Marker: marker, Capabilities: caps}, nil
 }
 
 // isPreInit reports whether dir is a fresh, pre-scaffold bootstrap project.

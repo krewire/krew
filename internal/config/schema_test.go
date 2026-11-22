@@ -5,11 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
-
-	"github.com/krewire/krewire/pkg/model"
 )
 
 func TestSchemaIsDraft07WithCanonicalID(t *testing.T) {
@@ -71,27 +68,10 @@ func TestSchemaMatchesConfig(t *testing.T) {
 	walk(reflect.TypeOf(Config{}), rootSchema, "")
 }
 
-func TestSchemaKindEnumMatchesModel(t *testing.T) {
-	var want []string
-	for _, k := range model.AllKinds {
-		want = append(want, string(k))
-	}
-	var got []string
-	for _, e := range rootSchema.Properties["project"].resolve().Properties["kind"].Enum {
-		got = append(got, e.(string))
-	}
-	sort.Strings(want)
-	sort.Strings(got)
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("project.kind enum = %v, want model.AllKinds %v", got, want)
-	}
-}
-
 func TestValidate(t *testing.T) {
 	src := `# yaml-language-server: $schema=https://krewire.com/schemas/krewire.json
 project:
   name: demo
-  kind: website
 build:
   outdir: dist
   base: /
@@ -117,13 +97,12 @@ gateway:
 		got = append(got, i.String())
 	}
 	want := []string{
-		`4:9: error: project.kind: "website" is not one of app, cli, site, book, worker, service, gateway, infra`,
-		`6:3: warning: unknown key "outdir" in build; did you mean "build.output"? (ignored)`,
-		`9:9: error: dev.port: 70000 is out of range 1..65535`,
-		`10:1: warning: unknown key "port"; did you mean "dev.port"? (ignored)`,
-		`11:1: warning: base is deprecated. Use build.base instead.`,
-		`15:5: warning: unknown key "primry" in theme.light; did you mean "theme.light.primary"? (ignored)`,
-		`19:19: error: gateway.routes[0].rate_limit must be integer, got string`,
+		`5:3: warning: unknown key "outdir" in build; did you mean "build.output"? (ignored)`,
+		`8:9: error: dev.port: 70000 is out of range 1..65535`,
+		`9:1: warning: unknown key "port"; did you mean "dev.port"? (ignored)`,
+		`10:1: warning: base is deprecated. Use build.base instead.`,
+		`14:5: warning: unknown key "primry" in theme.light; did you mean "theme.light.primary"? (ignored)`,
+		`18:19: error: gateway.routes[0].rate_limit must be integer, got string`,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("issues:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))

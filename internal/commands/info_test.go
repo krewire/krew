@@ -138,10 +138,6 @@ func TestRunInfo_ReportsWorkloadKinds(t *testing.T) {
 		yamlContent string
 		wantKind    string
 	}{
-		{"project:\n  kind: worker\n", "worker"},
-		{"project:\n  kind: service\n", "service"},
-		{"project:\n  kind: infra\n", "infra"},
-		{"project:\n  kind: cli\n", "cli"},
 		{"worker:\n  concurrency: 2\n", "worker"},
 		{"service:\n  name: payment\n  port: 8082\n", "service"},
 		{"infra:\n  provider: aws\n", "infra"},

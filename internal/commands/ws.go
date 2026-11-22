@@ -166,15 +166,15 @@ func runWsList(fs *flag.FlagSet) errs.ExitCode {
 		if err == nil {
 			modPath = mod.Path
 		}
-		kind := "-"
-		if res, err := shape.Detect(abs, ""); err == nil && res.Kind != "" {
-			kind = string(res.Kind)
+		marker := "-"
+		if res, err := shape.Detect(abs); err == nil && res.Marker != "" {
+			marker = res.Marker
 		}
 		rel := m
 		if abs == root {
 			rel = "."
 		}
-		fmt.Fprintf(os.Stdout, "%-30s %-12s %s\n", rel, kind, modPath)
+		fmt.Fprintf(os.Stdout, "%-30s %-12s %s\n", rel, marker, modPath)
 	}
 	return errs.ExitCodeSuccess
 }

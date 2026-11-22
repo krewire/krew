@@ -14,7 +14,6 @@ import (
 
 	kiwconfig "github.com/krewire/krew/internal/config"
 	"github.com/krewire/krew/internal/gomod"
-	"github.com/krewire/krew/internal/shape"
 )
 
 // Manifest file names for foreign ecosystems.
@@ -63,8 +62,7 @@ func (h *HostProject) DisplayTitle() string {
 // ColocatedProject describes a Krewire project discovered in a subdirectory.
 type ColocatedProject struct {
 	Name       string
-	Path       string // Relative path from scan root, e.g. "api"
-	Kind       string // e.g. "app", "service", "cli"
+	Path       string // Relative path from scan root, e.g. "api/"
 	ModulePath string
 }
 
@@ -250,14 +248,7 @@ func FindColocated(dir string) []ColocatedProject {
 			continue
 		}
 
-		config, _ := kiwconfig.Load(subDir)
-		res, _ := shape.Detect(subDir, config.Kind())
 		mod, _ := gomod.Find(subDir)
-
-		kindStr := res.String()
-		if res.IsPreInit() {
-			kindStr = shape.MarkerPreInit
-		}
 
 		modPath := ""
 		if mod != nil {
@@ -267,7 +258,6 @@ func FindColocated(dir string) []ColocatedProject {
 		results = append(results, ColocatedProject{
 			Name:       name,
 			Path:       name + "/",
-			Kind:       kindStr,
 			ModulePath: modPath,
 		})
 	}

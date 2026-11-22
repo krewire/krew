@@ -99,18 +99,18 @@ func RunBuild(fs *flag.FlagSet) errs.ExitCode {
 	}
 
 	// Auto-detect project shape
-	res, err := shape.Detect(root, cfg.Kind())
+	res, err := shape.Detect(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "krew: "+err.Error())
 		return errs.ExitCodeUsage
 	}
 
 	if res.IsPreInit() {
-		fmt.Fprintln(os.Stderr, "krew build: project is not equipped yet — run 'krew init' to choose a starter")
+		fmt.Fprintln(os.Stderr, "krew build: project is not equipped yet — run 'krew init' to initialize")
 		return errs.ExitCodeUsage
 	}
 
-	built, firstErr := buildByWorkloadKind(root, cfg, fs, res)
+	built, firstErr := buildProject(root, cfg, fs, res)
 	if !built {
 		if firstErr != errs.ExitCodeSuccess {
 			return firstErr
@@ -138,7 +138,7 @@ func buildByTarget(root string, cfg *config.Config, fs *flag.FlagSet, target, ou
 		writeManifest(outDir, collectCreated(outDir), cfg.Build.Outputs)
 		return true, errs.ExitCodeSuccess
 	case "binary":
-		if code := buildAppBinary(root, cfg, fs, shape.KindApp); code != errs.ExitCodeSuccess {
+		if code := buildAppBinary(root, cfg, fs); code != errs.ExitCodeSuccess {
 			return true, code
 		}
 		writeManifest(outDir, collectCreated(outDir), cfg.Build.Outputs)
@@ -179,7 +179,7 @@ func buildByTarget(root string, cfg *config.Config, fs *flag.FlagSet, target, ou
 	}
 }
 
-func buildByWorkloadKind(root string, cfg *config.Config, fs *flag.FlagSet, res shape.Result) (bool, errs.ExitCode) {
+func buildProject(root string, cfg *config.Config, fs *flag.FlagSet, res shape.Result) (bool, errs.ExitCode) {
 	hasPages := hasDir(root, "pages")
 	hasSSG := cfg.IsSSG()
 	hasBook := hasDir(root, "content")
@@ -187,21 +187,17 @@ func buildByWorkloadKind(root string, cfg *config.Config, fs *flag.FlagSet, res 
 	built := false
 	var firstErr errs.ExitCode = errs.ExitCodeSuccess
 
-	// 1. Infra workload dispatch
-	if res.Capabilities.HasInfra || res.Kind == shape.KindInfra {
+	// 1. Infra dispatch
+	if res.Capabilities.HasInfra {
 		if code := buildInfra(root, cfg, fs); code != errs.ExitCodeSuccess {
 			return false, code
 		}
 		built = true
 	}
 
-	// 2. Binary workload dispatch (app, cli, worker, service, gateway, or presence of main.go/cmd)
-	if res.Capabilities.HasApp || res.Kind == shape.KindApp || res.Kind == shape.KindCLI || res.Kind == shape.KindWorker || res.Kind == shape.KindService || res.Kind == shape.KindGateway {
-		targetKind := res.Kind
-		if targetKind == shape.KindNone || targetKind == shape.KindSite || targetKind == shape.KindBook {
-			targetKind = shape.KindApp
-		}
-		if code := buildAppBinary(root, cfg, fs, targetKind); code != errs.ExitCodeSuccess {
+	// 2. Binary dispatch
+	if res.Capabilities.HasApp {
+		if code := buildAppBinary(root, cfg, fs); code != errs.ExitCodeSuccess {
 			return false, code
 		}
 		built = true

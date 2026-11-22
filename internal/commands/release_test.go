@@ -17,6 +17,7 @@ func TestRunReleaseDryRunDoesNotMutate(t *testing.T) {
 	releaseBump = "patch"
 	releaseApply = false
 	releaseNotes = false
+	releaseQualify = false
 
 	releaseModules = append(releaseModules, "krewire")
 
@@ -32,9 +33,10 @@ func TestRunReleaseProjectDryRunDoesNotMutate(t *testing.T) {
 	releaseBump = "patch"
 	releaseApply = false
 	releaseNotes = false
+	releaseQualify = false
 
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte("project:\n  kind: site\nversion: \"v0.3.2\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte("project:\n  name: site\nversion: \"v0.3.2\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	old, _ := os.Getwd()
@@ -58,6 +60,7 @@ func TestRunReleaseProjectMissingConfigFails(t *testing.T) {
 	releaseBump = "patch"
 	releaseApply = false
 	releaseNotes = false
+	releaseQualify = false
 
 	dir := t.TempDir()
 	old, _ := os.Getwd()

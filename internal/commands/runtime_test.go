@@ -78,7 +78,7 @@ func main() {
 	for name, body := range map[string]string{
 		"go.mod":       "module demo\n\ngo 1.26\n",
 		"main.go":      main,
-		"krewire.yaml": "title: Demo\nproject:\n  kind: cli\n",
+		"krewire.yaml": "title: Demo\n",
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
 			t.Fatal(err)

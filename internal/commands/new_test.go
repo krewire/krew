@@ -39,8 +39,8 @@ func TestRunNew_WorkerServiceInfra(t *testing.T) {
 			if err != nil {
 				t.Fatalf("krewire.yaml not created: %v", err)
 			}
-			if !stringContains(string(data), "kind: "+tc.kind) {
-				t.Errorf("krewire.yaml missing kind: %s, got: %s", tc.kind, string(data))
+			if !stringContains(string(data), "name: ") {
+				t.Errorf("krewire.yaml missing project name, got: %s", string(data))
 			}
 		})
 	}
@@ -74,8 +74,8 @@ func TestRunInit_WorkerServiceInfra(t *testing.T) {
 			if err != nil {
 				t.Fatalf("krewire.yaml not created: %v", err)
 			}
-			if !stringContains(string(data), "kind: "+tc.kind) {
-				t.Errorf("krewire.yaml missing kind: %s, got: %s", tc.kind, string(data))
+			if !stringContains(string(data), "name: ") {
+				t.Errorf("krewire.yaml missing project name, got: %s", string(data))
 			}
 		})
 	}

@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -52,13 +51,6 @@ func RunInit(fs *flag.FlagSet) errs.ExitCode {
 	}
 
 	force := flagBool(fs, "force") || flagBool(fs, "f")
-
-	// Interactive and no starter chosen: offer one (Enter keeps the minimal setup).
-	if !hasKindFlag(fs) && shouldPrompt(fs) {
-		if kind := askKind(bufio.NewReader(promptIn), "none", true); kind != "" {
-			_ = fs.Set(kind, "true")
-		}
-	}
 
 	// 1. Run minimal Krewire Ecosystem initialization (git init, .gitignore, krewire.yaml)
 	initCreated, err := scaffold.Init(scaffold.InitOptions{

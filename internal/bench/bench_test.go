@@ -86,7 +86,6 @@ func BenchmarkCore_ConfigLoad(b *testing.B) {
 	dir := b.TempDir()
 	cfgData := `project:
   name: benchmark-site
-  kind: site
   module: example.com/site
 plugins:
   - name: test-plugin
@@ -106,7 +105,6 @@ plugins:
 func BenchmarkCore_ModelResolve(b *testing.B) {
 	p := model.Project{
 		Name:       "benchmark-app",
-		Kind:       model.KindSite,
 		ModulePath: "github.com/krewire/krewire",
 	}
 
@@ -114,7 +112,6 @@ func BenchmarkCore_ModelResolve(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_ = p.Validate()
-		_, _ = model.ParseKind("site")
 	}
 }
 
@@ -184,7 +181,6 @@ func TestLifecycle_UsabilityComparison(t *testing.T) {
 	// 1. Simulate unified krew lifecycle: initialize, configure, context check
 	krewireYaml := `project:
   name: usability-app
-  kind: app
   version: "0.1.0"
 server:
   port: 8080
@@ -202,12 +198,6 @@ server:
 	}
 	if cfg.Project.Name != "usability-app" {
 		t.Errorf("expected project name 'usability-app', got %q", cfg.Project.Name)
-	}
-
-	// 2. Assert all 8 canonical workloads are discoverable with evidence
-	readiness := model.CanonicalWorkloadReadiness()
-	if len(readiness) != 8 {
-		t.Errorf("expected 8 canonical workloads, got %d", len(readiness))
 	}
 }
 
@@ -238,7 +228,6 @@ func TestHybridCoexistence_UsabilityComparison(t *testing.T) {
 	// 2. Co-locate Krewire backend service
 	krewireYAML := `project:
   name: api-backend
-  kind: service
 server:
   port: 8080
 scripts:

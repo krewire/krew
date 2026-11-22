@@ -114,8 +114,8 @@ func TestFindColocated(t *testing.T) {
 	if colocated[0].Name != "api" {
 		t.Errorf("expected name api, got %q", colocated[0].Name)
 	}
-	if colocated[0].Kind != "app" {
-		t.Errorf("expected kind app, got %q", colocated[0].Kind)
+	if colocated[0].Path != "api/" {
+		t.Errorf("expected path api/, got %q", colocated[0].Path)
 	}
 	if colocated[0].ModulePath != "myapp/api" {
 		t.Errorf("expected module myapp/api, got %q", colocated[0].ModulePath)

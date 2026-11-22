@@ -31,7 +31,6 @@ func equipBook(opts EquipOptions) ([]string, error) {
 func bookKrewireYamlTemplate(name, title string) string {
 	return fmt.Sprintf(`project:
   name: %s
-  kind: book
   version: 0.1.0
 
 title: %s

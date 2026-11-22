@@ -15,7 +15,6 @@ import (
 	"github.com/krewire/krewire/pkg/cloud/storage"
 	"github.com/krewire/krewire/pkg/cloud/worker"
 	"github.com/krewire/krewire/pkg/errs"
-	"github.com/krewire/krewire/pkg/model"
 )
 
 // RegisterWorker registers flags for the worker command.
@@ -40,11 +39,9 @@ func RunWorker(fs *flag.FlagSet) errs.ExitCode {
 		return fail(err)
 	}
 
-	kind := cfg.Kind()
-	isWorkerProject := kind == string(model.KindWorker)
-	isSupportedKind := kind == string(model.KindApp) || kind == string(model.KindService) || isWorkerProject
-	if !isSupportedKind || (!isWorkerProject && cfg.Worker == nil) {
-		fmt.Fprintf(os.Stderr, "krew worker: project kind %q does not support worker without 'worker:' configuration in krewire.yaml\n", kind)
+	dlqOp := flagValue(fs, "dlq")
+	if dlqOp == "" && cfg.Worker == nil && !hasFile(root, "main.go") {
+		fmt.Fprintln(os.Stderr, "krew worker: requires 'worker:' configuration in krewire.yaml or main.go")
 		return errs.ExitCodeUsage
 	}
 

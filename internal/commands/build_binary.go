@@ -11,12 +11,11 @@ import (
 
 	"github.com/krewire/krew/internal/buildinfo"
 	"github.com/krewire/krew/internal/config"
-	"github.com/krewire/krew/internal/shape"
 	"github.com/krewire/krewire/pkg/errs"
 )
 
 // buildAppBinary compiles the project Go binary into .krewire/build/bin/<name> (KWN-BUILD-001).
-func buildAppBinary(root string, cfg *config.Config, fs *flag.FlagSet, kind shape.Kind) errs.ExitCode {
+func buildAppBinary(root string, cfg *config.Config, fs *flag.FlagSet) errs.ExitCode {
 	name := firstNonEmpty(cfg.Name, moduleName(root), DefaultBinaryName)
 	outDir := joinRoot(root, firstNonEmpty(flagValue(fs, "output"), flagValue(fs, "o"), cfg.Output), config.DefaultOutput)
 	binDir := filepath.Join(outDir, "bin")
@@ -27,16 +26,16 @@ func buildAppBinary(root string, cfg *config.Config, fs *flag.FlagSet, kind shap
 
 	entry := resolveEntry(root)
 	if entry == "." && !hasFile(root, "main.go") && !hasGoFiles(root) {
-		return fail(fmt.Errorf("build %s: no main package found in root or cmd/", kind))
+		return fail(fmt.Errorf("build binary: no main package found in root or cmd/"))
 	}
 
-	slog.Info("building binary", "kind", kind, "entry", entry, "output", binPath)
+	slog.Info("building binary", "entry", entry, "output", binPath)
 	cmd := exec.Command("go", "build", "-trimpath", "-ldflags="+buildinfo.LDFlags(true), "-o", binPath, entry)
 	cmd.Dir = root
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fail(fmt.Errorf("build %s: %w", kind, err))
+		return fail(fmt.Errorf("build binary: %w", err))
 	}
 	fmt.Println("created " + binPath)
 	return errs.ExitCodeSuccess

@@ -103,7 +103,6 @@ func RunContext(fs *flag.FlagSet) errs.ExitCode {
 
 	// Human-readable summary output
 	fmt.Printf("Project Context: %s (schema v%s)\n", ctx.Name, ctx.Version)
-	fmt.Printf("  Workload:    %s\n", ctx.Workload)
 	fmt.Printf("  Tier:        %s\n", ctx.Tier)
 	if ctx.GoVersion != "" {
 		fmt.Printf("  Go Version:  %s\n", ctx.GoVersion)

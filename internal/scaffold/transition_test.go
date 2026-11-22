@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/krewire/krew/internal/config"
-	"github.com/krewire/krewire/pkg/model"
 )
 
 // TestWorkloadTransitions verifies that projects can progressively evolve
@@ -23,7 +22,6 @@ func TestWorkloadTransitions(t *testing.T) {
 		}
 		appYaml := `project:
   name: myapp
-  kind: app
   version: "0.1.0"
 server:
   port: 8080
@@ -56,12 +54,12 @@ server:
 
 		// Verify both configurations load and validate cleanly
 		appCfg, err := config.Load(dir)
-		if err != nil || model.Kind(appCfg.Project.Kind) != model.KindApp {
+		if err != nil || appCfg.Project.Name != "myapp" {
 			t.Errorf("expected App configuration intact, got: %+v, err: %v", appCfg, err)
 		}
 
 		workerCfg, err := config.Load(workerDir)
-		if err != nil || model.Kind(workerCfg.Project.Kind) != model.KindWorker {
+		if err != nil || workerCfg.Project.Name != "myworker" {
 			t.Errorf("expected Worker configuration intact, got: %+v, err: %v", workerCfg, err)
 		}
 	})

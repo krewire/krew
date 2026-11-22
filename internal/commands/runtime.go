@@ -59,7 +59,6 @@ func bootRuntime(fs *flag.FlagSet) (*runtimeEnv, errs.ExitCode) {
 // registerRuntimeFlags registers the flags shared by every command that
 // boots a project locally.
 func registerRuntimeFlags(fs *flag.FlagSet) {
-	fs.String("kind", "", "force project kind: app, cli, site, or book (default auto)")
 	fs.String("env", "", "target environment: local, production, or testing (default: krewire.yaml, then KIW_ENV)")
 	fs.Bool("debug", false, "enable debug mode (default: krewire.yaml, then KIW_DEBUG)")
 }

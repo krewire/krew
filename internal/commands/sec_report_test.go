@@ -14,7 +14,6 @@ func TestRenderSecurityAssuranceReport_CleanProject(t *testing.T) {
 	// Write clean krewire.yaml
 	yaml := `project:
   name: demo-service
-  kind: service
   version: "1.0.0"
 `
 	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(yaml), 0644); err != nil {
@@ -29,7 +28,7 @@ func TestRenderSecurityAssuranceReport_CleanProject(t *testing.T) {
 	}
 
 	out := buf.String()
-	if !strings.Contains(out, "Workload Security Assurance Report [SERVICE]") {
+	if !strings.Contains(out, "Security Assurance Report") {
 		t.Errorf("output missing expected workload header: %s", out)
 	}
 	if !strings.Contains(out, "[VERIFIED CONTROLS — Active By Default]") {
@@ -52,7 +51,6 @@ func TestRenderSecurityAssuranceReport_DetectsRegressions(t *testing.T) {
 	// Insecure krewire.yaml with plaintext password and insecure CORS
 	insecureYaml := `project:
   name: insecure-app
-  kind: app
 database:
   password: "super_secret_hardcoded_pwd"
 server:

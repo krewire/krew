@@ -91,7 +91,7 @@ func runSingleBenchmark(item BenchmarkItem, cfg RunnerConfig) (BenchmarkResult, 
 		// Benchmark config loading
 		dir, _ := os.MkdirTemp("", "bench-cfg-*")
 		defer os.RemoveAll(dir)
-		_ = os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte("project:\n  name: benchmark-site\n  kind: site\n  module: example.com/site\n"), 0o644)
+		_ = os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte("project:\n  name: benchmark-site\n  module: example.com/site\n"), 0o644)
 
 		iters := cfg.Iterations * 10
 		var m1, m2 runtime.MemStats
@@ -113,7 +113,6 @@ func runSingleBenchmark(item BenchmarkItem, cfg RunnerConfig) (BenchmarkResult, 
 		// Benchmark model validation
 		p := model.Project{
 			Name:       "benchmark-app",
-			Kind:       model.KindSite,
 			ModulePath: "github.com/krewire/krewire",
 		}
 		iters := cfg.Iterations * 100
@@ -123,7 +122,6 @@ func runSingleBenchmark(item BenchmarkItem, cfg RunnerConfig) (BenchmarkResult, 
 		start := time.Now()
 		for i := 0; i < iters; i++ {
 			_ = p.Validate()
-			_, _ = model.ParseKind("site")
 		}
 		elapsed := time.Since(start)
 		runtime.ReadMemStats(&m2)
@@ -279,7 +277,7 @@ Krewire is an end-to-end digital SDLC platform built on three immutable pillars:
 		}
 		defer os.RemoveAll(tmpSite)
 
-		_ = os.WriteFile(filepath.Join(tmpSite, "krewire.yaml"), []byte("project:\n  kind: site\n"), 0o644)
+		_ = os.WriteFile(filepath.Join(tmpSite, "krewire.yaml"), []byte("project:\n  name: site-bench\n"), 0o644)
 		_ = os.MkdirAll(filepath.Join(tmpSite, "layouts"), 0o755)
 		_ = os.WriteFile(filepath.Join(tmpSite, "layouts", "Base.kiw"), []byte("<!DOCTYPE html><html><body>{{.Content}}</body></html>"), 0o644)
 		_ = os.MkdirAll(filepath.Join(tmpSite, "pages"), 0o755)

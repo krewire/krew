@@ -22,7 +22,7 @@ func setupTestServer(t *testing.T) (*Server, string) {
 	// Write dummy krewire.yaml
 	yamlContent := `title: "TestApp"
 project:
-  kind: "app"
+  name: "testapp"
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, "krewire.yaml"), []byte(yamlContent), 0o644); err != nil {
 		t.Fatalf("failed to write krewire.yaml: %v", err)

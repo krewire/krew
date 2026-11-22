@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/krewire/krew/internal/config"
-	"github.com/krewire/krewire/pkg/model"
 )
 
 type ProjectRoute struct {
@@ -27,7 +26,6 @@ type ProjectService struct {
 // ProjectInfo provides full metadata about the project, its shape, and environment.
 type ProjectInfo struct {
 	Name      string           `json:"name"`
-	Kind      string           `json:"kind"`
 	Env       string           `json:"env"`
 	Root      string           `json:"root"`
 	Version   string           `json:"version"`
@@ -54,7 +52,6 @@ type RuntimeMetrics struct {
 // HealthResponse holds the standardized health check contract.
 type HealthResponse struct {
 	Status        string  `json:"status"`
-	Kind          string  `json:"kind"`
 	UptimeSeconds int64   `json:"uptime_seconds"`
 	Goroutines    int     `json:"goroutines"`
 	MemoryMB      float64 `json:"memory_mb"`
@@ -196,11 +193,5 @@ func discoverServices(cfg *config.Config) []ProjectService {
 
 func discoverWorkers(cfg *config.Config) []string {
 	var workers []string
-	if cfg == nil {
-		return workers
-	}
-	if cfg.Kind() == string(model.KindWorker) {
-		workers = append(workers, "default (worker kind)")
-	}
 	return workers
 }

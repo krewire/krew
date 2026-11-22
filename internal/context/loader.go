@@ -38,9 +38,6 @@ func Load(targetDir string) (*model.ProjectContext, error) {
 		if cfg.Project.Name != "" {
 			ctx.Name = cfg.Project.Name
 		}
-		if cfg.Project.Kind != "" {
-			ctx.Workload = model.Kind(cfg.Project.Kind)
-		}
 	}
 	if ctx.Name == "" {
 		ctx.Name = filepath.Base(targetDir)
@@ -53,7 +50,6 @@ func Load(targetDir string) (*model.ProjectContext, error) {
 		ctx.GoVersion = info.GoVersion
 	} else if _, err := os.Stat(filepath.Join(targetDir, "go.work")); err == nil {
 		ctx.ModulePath = "workspace"
-		ctx.Workload = "workspace"
 	}
 
 	// 3. Populate Canonical Three Pillars (3S) Invariants (Precedence 2)

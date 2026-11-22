@@ -45,7 +45,6 @@ func equipGateway(opts EquipOptions) ([]string, error) {
 func gatewayKrewireYamlTemplate(name string) string {
 	return fmt.Sprintf(`project:
   name: %s
-  kind: gateway
   version: 0.1.0
 
 gateway:

@@ -70,33 +70,30 @@ func RunRun(fs *flag.FlagSet) errs.ExitCode {
 		}
 	}
 
-	explicit := firstNonEmpty(flagValue(fs, "kind"), rt.cfg.Kind())
-	res, err := shape.Detect(rt.root, explicit)
+	res, err := shape.Detect(rt.root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "krew: "+err.Error())
 		return errs.ExitCodeUsage
 	}
 
-	switch res.Kind {
-	case shape.KindApp, shape.KindWorker, shape.KindService, shape.KindGateway:
-		return runApp(rt, fs)
-	case shape.KindCLI:
-		return runCLI(rt, fs)
-	case shape.KindSite, shape.KindBook:
-		fmt.Fprintf(os.Stderr, "krew run: this is a %s project — 'krew run' executes apps, CLIs, Go files and scripts once\n", res.Kind)
-		fmt.Fprintln(os.Stderr, "  hint: use 'krew dev' for a live dev server with reload, or 'krew build' then 'krew serve' to preview the production output")
-		return errs.ExitCodeUsage
-	case shape.KindInfra:
-		fmt.Fprintln(os.Stderr, "krew run: this is an infra project — use 'krew build --plan' or 'krew deploy' instead")
-		return errs.ExitCodeUsage
-	default:
-		if res.IsPreInit() {
-			fmt.Fprintln(os.Stderr, "krew run: project is not equipped yet — run 'krew init' to choose a starter")
-			return errs.ExitCodeUsage
-		}
-		fmt.Fprintln(os.Stderr, "krew run: no app found — add a main.go building a web.App, or run 'krew new <project>' first")
+	if res.IsPreInit() {
+		fmt.Fprintln(os.Stderr, "krew run: project is not equipped yet — run 'krew init' to initialize")
 		return errs.ExitCodeUsage
 	}
+
+	if res.Capabilities.HasApp {
+		return runApp(rt, fs)
+	}
+	if res.Capabilities.HasPages || res.Capabilities.HasBook {
+		fmt.Fprintln(os.Stderr, "krew run: static sites and books — use 'krew dev' for a live dev server, or 'krew build' then 'krew serve'")
+		return errs.ExitCodeUsage
+	}
+	if res.Capabilities.HasInfra {
+		fmt.Fprintln(os.Stderr, "krew run: infra configuration — use 'krew build --plan' or 'krew deploy' instead")
+		return errs.ExitCodeUsage
+	}
+	fmt.Fprintln(os.Stderr, "krew run: no executable main package found — add main.go or run 'krew new <project>'")
+	return errs.ExitCodeUsage
 }
 
 // runApp builds the app to a temp binary and runs it, streaming output and
@@ -128,7 +125,11 @@ func runApp(rt *runtimeEnv, fs *flag.FlagSet) errs.ExitCode {
 	}
 
 	slog.Info("running app", "addr", addr)
-	cmd := exec.Command(bin)
+	var args []string
+	if fs != nil {
+		args = fs.Args()
+	}
+	cmd := exec.Command(bin, args...)
 	cmd.Dir = rt.root
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

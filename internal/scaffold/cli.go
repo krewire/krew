@@ -39,7 +39,7 @@ func equipCLI(opts EquipOptions) ([]string, error) {
 }
 
 func cliKrewireYamlTemplate(name string) string {
-	return "project:\n  name: " + name + "\n  kind: cli\n  version: 0.1.0\n"
+	return "project:\n  name: " + name + "\n  version: 0.1.0\n"
 }
 
 func cliMainTemplate(module, name string) string {

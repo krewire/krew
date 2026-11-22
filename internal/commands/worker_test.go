@@ -9,29 +9,9 @@ import (
 	"github.com/krewire/krewire/pkg/errs"
 )
 
-func TestWorkerCommand_KindMismatch(t *testing.T) {
-	dir := t.TempDir()
-	yaml := "project:\n  name: myapp\n  kind: app\n"
-	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(yaml), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	orig, _ := os.Getwd()
-	defer os.Chdir(orig)
-	_ = os.Chdir(dir)
-
-	fs := flag.NewFlagSet("worker", flag.ContinueOnError)
-	RegisterWorker(fs)
-
-	code := RunWorker(fs)
-	if code != errs.ExitCodeUsage {
-		t.Fatalf("expected exit code %v, got %v", errs.ExitCodeUsage, code)
-	}
-}
-
 func TestWorkerCommand_DLQListEmpty(t *testing.T) {
 	dir := t.TempDir()
-	yaml := "project:\n  name: myworker\n  kind: worker\n"
+	yaml := "project:\n  name: myworker\n"
 	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +33,7 @@ func TestWorkerCommand_DLQListEmpty(t *testing.T) {
 
 func TestWorkerCommand_AppWithWorkerConfigAllowed(t *testing.T) {
 	dir := t.TempDir()
-	yaml := "project:\n  name: myapp\n  kind: app\nworker:\n  concurrency: 2\n"
+	yaml := "project:\n  name: myapp\nworker:\n  concurrency: 2\n"
 	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +54,7 @@ func TestWorkerCommand_AppWithWorkerConfigAllowed(t *testing.T) {
 
 func TestWorkerCommand_DLQClear(t *testing.T) {
 	dir := t.TempDir()
-	yaml := "project:\n  name: myworker\n  kind: worker\n"
+	yaml := "project:\n  name: myworker\n"
 	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +76,7 @@ func TestWorkerCommand_DLQClear(t *testing.T) {
 
 func TestWorkerCommand_DLQUnknownSubcommand(t *testing.T) {
 	dir := t.TempDir()
-	yaml := "project:\n  name: myworker\n  kind: worker\n"
+	yaml := "project:\n  name: myworker\n"
 	if err := os.WriteFile(filepath.Join(dir, "krewire.yaml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}

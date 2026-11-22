@@ -39,7 +39,6 @@ func equipStatic(opts EquipOptions) ([]string, error) {
 func staticKrewireYamlTemplate(name string) string {
 	return fmt.Sprintf(`project:
   name: %s
-  kind: site
   version: 0.1.0
 
 build:

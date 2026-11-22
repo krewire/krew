@@ -241,7 +241,7 @@ func checkProjectConfig(cwd string, report *DoctorReport) {
 		Category: "Project",
 		Name:     "Configuration",
 		Status:   StatusPass,
-		Message:  fmt.Sprintf("Valid krewire.yaml (project: %q, kind: %s)", pName, cfg.Project.Kind),
+		Message:  fmt.Sprintf("Valid krewire.yaml (project: %q)", pName),
 	})
 }
 

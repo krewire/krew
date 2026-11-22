@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	kiwconfig "github.com/krewire/krew/internal/config"
 	"github.com/krewire/krewire/pkg/model"
 )
 
@@ -18,22 +17,9 @@ import (
 func renderSecurityAssuranceReport(w io.Writer, dir string) []string {
 	var regressions []string
 
-	// 1. Detect project kind from krewire.yaml or default to KindApp
-	kind := model.KindApp
-	cfg, err := kiwconfig.Load(dir)
-	if err == nil && cfg != nil && cfg.Project.Kind != "" {
-		parsedKind, parseErr := model.ParseKind(cfg.Project.Kind)
-		if parseErr == nil && parsedKind.IsValid() {
-			kind = parsedKind
-		}
-	}
+	baseline := model.GetSecurityBaseline()
 
-	baseline, found := model.GetWorkloadSecurityBaseline(kind)
-	if !found {
-		baseline, _ = model.GetWorkloadSecurityBaseline(model.KindApp)
-	}
-
-	fmt.Fprintf(w, "\n── Workload Security Assurance Report [%s] ─────────────\n", strings.ToUpper(string(baseline.Kind)))
+	fmt.Fprintf(w, "\n── Security Assurance Report ───────────────────────────\n")
 	fmt.Fprintf(w, "  Threat Model: %s\n\n", baseline.ThreatModel)
 
 	// Categorize controls
