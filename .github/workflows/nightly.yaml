@@ -155,7 +155,7 @@ jobs:
           tag_name: ${{ needs.classify.outputs.version }}
           name: Krew Agent Engine ${{ needs.classify.outputs.version }} [nightly]
           body: |
-            ## Krew Autonomous AI Agent Engine — ${{ needs.classify.outputs.version }} (Nightly Build)
+            ## Krew Developer Toolchain — ${{ needs.classify.outputs.version }} (Nightly Build)
             
             **Track**: \`nightly\`
             **Commit**: \`${{ github.sha }}\`

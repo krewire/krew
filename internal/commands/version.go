@@ -19,7 +19,7 @@ func RunVersion(_ *flag.FlagSet) errs.ExitCode {
 	green := func(s string) string { return tm.Paint(s, term.ColorGreen, nil) }
 	yellow := func(s string) string { return tm.Paint(s, term.ColorYellow, nil) }
 
-	fmt.Printf("%s %s\n", bold("krew"), dim("Autonomous AI Agent & Developer Toolchain"))
+	fmt.Printf("%s %s\n", bold("krew"), dim("Unified Developer Toolchain"))
 	ver := qualifiedVersion(buildinfo.ModKrewire)
 	verColor := green(ver)
 	if strings.Contains(ver, "dev") {

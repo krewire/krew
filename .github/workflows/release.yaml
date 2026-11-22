@@ -217,7 +217,7 @@ jobs:
           tag_name: ${{ needs.classify.outputs.version }}
           name: Krew Agent Engine ${{ needs.classify.outputs.version }} [${{ needs.classify.outputs.track }}]
           body: |
-            ## Krew Autonomous AI Agent Engine — ${{ needs.classify.outputs.version }}
+            ## Krew Developer Toolchain — ${{ needs.classify.outputs.version }}
             
             **Track**: `${{ needs.classify.outputs.track }}`
             **Architecture Tier**: Layer 4 Platform Engine
