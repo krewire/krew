@@ -1,221 +1,65 @@
-# Krew — Platform-Agnostic Autonomous AI Agent
+# Krew — Unified Developer Toolchain & CLI
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/krewire/krew.svg)](https://pkg.go.dev/github.com/krewire/krew)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
-**Krew** is an autonomous, platform-agnostic AI agent engine designed to be embedded **literally anywhere**:
-- In-process inside **Krewire Boost** or custom Go microservices.
-- As a local/remote headless runner in **CI/CD pipelines** or cron jobs.
-- As a background daemon via **HTTP REST + Server-Sent Events (SSE)** in Docker or Kubernetes.
-- Inside IDEs (Cursor, Windsurf, Claude Desktop, Antigravity) via **Model Context Protocol (MCP)**.
-- Directly in your terminal via an interactive CLI (`krew chat`).
+**Krew** is the unified developer toolchain and command-line driver for the entire Krewire digital SDLC ecosystem. It orchestrates project scaffolding, live reloading, production compilation, asset bundling, database migrations, quality gate verifications, and IDE Model Context Protocol (MCP) integrations.
+
+> **Note**: All autonomous AI agent packages, reasoning loops, and provider adapters have moved to the foundational core monorepo: [`github.com/krewire/krewire/pkg/ai`](https://github.com/krewire/krewire/tree/main/pkg/ai).
 
 ---
 
-## Architecture Overview
+## Core Workflow Commands
 
-```
-                      ┌────────────────────────────────────────┐
-                      │            Target Application          │
-                      │  (Krewire Boost, Go App, Server, IDE)  │
-                      └───────────────────┬────────────────────┘
-                                          │
-                   ┌──────────────────────┴──────────────────────┐
-                   │                 Transports                  │
-                   │   Embed API  │  CLI  │  HTTP/SSE  │   MCP   │
-                   └──────────────────────┬──────────────────────┘
-                                          │
-                               ┌──────────┴──────────┐
-                               │     Krew Agent      │
-                               │  (Autonomous ReAct) │
-                               └──────────┬──────────┘
-                                          │
-             ┌────────────────────────────┼────────────────────────────┐
-             │                            │                            │
-   ┌─────────┴─────────┐        ┌─────────┴─────────┐        ┌─────────┴─────────┐
-   │    Tool Suite     │        │   Memory Buffer   │        │   LLM Providers   │
-   │  read/write/edit  │        │   Sliding Window  │        │  Gemini, OpenAI,  │
-   │  exec, fetch_url  │        │     Compaction    │        │ Anthropic, Ollama │
-   └───────────────────┘        └───────────────────┘        └───────────────────┘
-```
+- `krew new <name> [--site|--book|--cli|--app]` — Scaffold a new project from authoritative templates.
+- `krew init` — Equip Krewire into an existing directory.
+- `krew dev` — Live development server with hot reload and file watching.
+- `krew build` — Static site generation, application binary compilation, and infrastructure bundles.
+- `krew bundle` — CSS and JS static asset bundling with minification.
+- `krew serve` — Preview production output from `.krewire/build`.
+- `krew run` — Execute tasks or arbitrary Go source files with runtime context.
+- `krew test` — Run unit and integration tests.
+- `krew verify` — Run reproducible quality gates and emit verifiable task records.
+- `krew vet` — Static analysis, schema linting, and vulnerability scanning.
+- `krew fmt` — Enforce Go formatting standards.
+- `krew make <kind> <Name>` — Generate components, pages, models, migrations, or seeders.
+- `krew migrate [up|down|status]` — Database schema migration management.
+- `krew seed` — Database seeders and factory runners.
+- `krew ui` — Browse, install, and diff `.kiw` Pop-Brutalist UI components.
+- `krew pkg` — Package management for standalone `.kiw` component bundles.
+- `krew dash` — Launch local development dashboard and sandbox environments.
+- `krew gateway` — Local edge API gateway reverse proxy.
+- `krew mcp` — Native Model Context Protocol (MCP) server for IDE coding assistants.
+- `krew ws` — Monorepo and multi-repo workspace management (`go.work`).
+- `krew boost` — Scaffold Boost AI agent configuration (`AGENTS.md`, `.cursor/rules`, etc.).
 
 ---
 
-## 1. Embed in Go (3 Lines)
+## AI Agent SDK
 
-You can embed Krew into any Go service or toolchain:
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"log"
-
-	"github.com/krewire/krew/pkg/embed"
-	"github.com/krewire/krew/pkg/persona"
-)
-
-func main() {
-	// 1. Initialize embedded agent (auto-detects GEMINI_API_KEY, OPENAI_API_KEY, etc.)
-	ag, err := embed.New(embed.Options{
-		Workspace: ".",
-		Persona:   &persona.CodingAssistant,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 2. Execute an autonomous task
-	res, err := ag.Run(context.Background(), "Inspect the codebase and add tests for pkg/utils")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 3. Print result
-	fmt.Println(res.Content)
-}
-```
-
----
-
-## 2. CLI Usage
-
-### Interactive Terminal Session
-```bash
-# Launch interactive coding session
-krew chat --persona=coding --workspace=.
-```
-
-### Headless Single-Shot Execution
-```bash
-# Run headless automation (ideal for CI/CD or background scripts)
-krew run "Check all Go tests and fix any failing assertions"
-```
-
-### Remote Server Daemon
-```bash
-# Start HTTP/REST + Server-Sent Events daemon
-krew serve --port=8080 --host=0.0.0.0
-```
-
-Available HTTP endpoints:
-- `GET /health`: Health check status.
-- `POST /api/agent/run`: Single-turn autonomous execution (supports `{"stream": true}` for SSE).
-- `POST /api/agent/chat`: Multi-turn conversational execution.
-
-### Model Context Protocol (MCP)
-Run Krew as a stdio MCP server for Cursor, Windsurf, or Claude Desktop:
-```bash
-krew mcp --workspace=/path/to/project
-```
-
-#### Claude Desktop Configuration (`claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "krew": {
-      "command": "krew",
-      "args": ["mcp", "--workspace", "/path/to/workspace"],
-      "env": {
-        "GEMINI_API_KEY": "your-key-here"
-      }
-    }
-  }
-}
-```
-
----
-
-## 3. Built-In Personas
-
-Krew provides battle-tested system personas tailored for specific operational environments:
-
-| Persona | Role | Key Capabilities |
-|---|---|---|
-| `persona.CodingAssistant` | Senior software engineer | Code exploration, refactoring, atomic diffs, test execution. |
-| `persona.DevOpsRunner` | Site reliability & DevOps | Server diagnostics, Docker/systemd automation, network debugging. |
-| `persona.AutonomousWorker` | Headless worker | Step-by-step task queue resolution with structured summaries. |
-| `persona.GeneralAssistant` | General companion | Explanations, Q&A, and workflow assistance. |
-| `persona.SDLCPlanner` | Architecture & scoping | Deconstructs task briefs into atomic steps with risk assessments. |
-| `persona.SDLCImplementer` | Scoped code writer | Atomic changes strictly bounded to granted scope. |
-| `persona.SDLCVerifier` | Qualification engineer | Deterministic test execution and failure root-cause analysis. |
-| `persona.SDLCReviewer` | Risk & diff auditor | Unified diff review, security assessment, and human sign-off prep. |
-
----
-
-## 4. Governed SDLC Workflows
-
-Krew includes a deterministic, policy-gated SDLC workflow engine (`pkg/sdlc`):
-- **Structured Task Briefs**: Tasks specify objective, allowed repository scope, constraints, and verification commands.
-- **Stage Progression**: `understand` ──► `plan` ──► `implement` ──► `verify` ──► `review` ──► `report`.
-- **Scope Restriction**: File mutations outside `TaskBrief.Scope` are rejected.
-- **Deterministic Verification**: Tasks require reproducible check commands (`go test`, `krew verify`, etc.) and fail closed on test errors.
-- **Human Review & Approval**: Interactive gates for plan approval, high-risk tools, and change review.
-
-See [docs/sdlc-workflows.md](docs/sdlc-workflows.md) for full architecture and usage guides.
-
----
-
-## 4. Built-In Sandboxed Tool Suite
-
-All workspace tools respect path sandboxing to protect against directory traversal attacks (`SafePath`):
-
-- `read_file(path)`: Inspect file contents up to size limits.
-- `write_file(path, content, overwrite)`: Atomically create or overwrite files.
-- `edit_file(path, target, replacement)`: Precise exact-match string replacement.
-- `list_dir(path, recursive)`: File tree inventory.
-- `run_command(command, timeout_seconds)`: Execute commands with timeout enforcement.
-- `fetch_url(url, method, timeout_seconds)`: Query external APIs or scrape documentation.
-
----
-
-## 5. Integrating with Krewire Boost
-
-Krewire Boost leverages `krew` as its default coding assistant runtime:
+For the autonomous AI agent engine, ReAct reasoning loops, memory compactor, and LLM providers, import directly from the core library:
 
 ```go
 import (
-	"github.com/krewire/krew/pkg/embed"
-	"github.com/krewire/krew/pkg/persona"
+    "github.com/krewire/krewire/pkg/ai"
+    "github.com/krewire/krewire/pkg/ai/agent"
+    "github.com/krewire/krewire/pkg/ai/assistant"
+    "github.com/krewire/krewire/pkg/ai/embed"
+    "github.com/krewire/krewire/pkg/ai/providers"
 )
-
-func RegisterBoostAssistant(workspace string) (*embed.Instance, error) {
-	return embed.New(embed.Options{
-		Workspace: workspace,
-		Persona:   &persona.CodingAssistant,
-		MaxSteps:  30,
-	})
-}
 ```
 
----
-
-## 6. Supported LLM Providers
-
-Krew uses `github.com/krewire/krew/pkg/ai` as its unified inference provider abstraction:
-- **Google Gemini**: set `GEMINI_API_KEY` (defaults to Gemini 2.5 Flash / Pro).
-- **OpenAI**: set `OPENAI_API_KEY` (GPT-4o, o3-mini).
-- **Anthropic**: set `ANTHROPIC_API_KEY` (Claude 3.7 Sonnet).
-- **Ollama**: set `OLLAMA_HOST` (e.g. `http://localhost:11434`) for 100% offline local inference.
+CLI commands for interactive AI sessions (`chat`, `agent`, `daemon`, `sessions`, `export`) are provided via `krewire/cmd/ai`.
 
 ---
 
-## 7. Strategic Roadmap
+## Quality Gates
 
-Krew follows a multi-year engineering roadmap (2026–2028):
-- **2026**: Core ReAct Engine, Multi-Protocol Transports (Embed, CLI, SSE Daemon, MCP), Sandboxed Tools, and standalone CLI (`krew`). *(Delivered)*
-- **2027**: 3-Tier Hierarchical Memory (Working, Episodic, Semantic Vector RAG), OpenTelemetry step tracing, cloud-hosted autonomous runners, and cryptographic agent identity (A-Identity) with RBAC.
-- **2028**: Agent-to-Agent (A2A) peer-to-peer swarm mesh protocol, autonomous SRE remediation, sovereign air-gapped local inference engine (Ollama/GGUF/Metal/CUDA), and v1.0.0 LTS.
+Before pushing changes to `krew`:
 
-For quarterly ecosystem milestones, see [Quarterly Roadmaps](../internal/docs/roadmaps/index.md).
-
----
-
-## License
-
-Krew is proprietary and confidential commercial software.  
-Copyright (c) 2026 Krewire. All rights reserved.  
-Unauthorized copying, reverse engineering, or redistribution is strictly prohibited.  
-See [LICENSE](LICENSE) for full terms.
+```bash
+gofmt -l .
+go vet ./...
+go test -v ./...
+CGO_ENABLED=0 go build -o bin/krew ./cmd/krew
+```

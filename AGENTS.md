@@ -1,12 +1,16 @@
-# AGENTS.md — Krew AI Agent Monorepo
+# AGENTS.md — Krew Developer Toolchain Monorepo
 
 Agent guide for AI agents working inside the `krew` repository
 (module = `github.com/krewire/krew`).
 
-`krew` is an autonomous, platform-agnostic AI agent engine designed to be embedded
-anywhere: in-process inside Go applications (Krewire Boost), as a local/remote background
-daemon over HTTP/SSE, as an interactive terminal CLI (`krew chat`, `krew run`), and inside
-IDEs via Model Context Protocol (stdio MCP).
+`krew` is the unified developer toolchain and CLI for the Krewire digital ecosystem:
+providing project scaffolding (`new`, `init`, `make`), live dev server & reload (`dev`, `run`, `serve`),
+production builds (`build`, `bundle`), database migrations and seeders (`migrate`, `seed`),
+quality gates (`test`, `verify`, `vet`, `fmt`), component management (`ui`, `pkg`, `add`),
+workspace orchestration (`dash`, `ws`, `gateway`, `worker`), and IDE integration (`mcp`).
+
+All AI agent engine packages and runtime features reside in the core foundation at
+`github.com/krewire/krewire/pkg/ai`. `krew` is strictly a developer toolchain.
 
 ## Language
 
@@ -15,17 +19,10 @@ IDEs via Model Context Protocol (stdio MCP).
 
 ## Architecture & Code Discipline
 
-- **The Krewire Pyramid (Layer 4 Platform)**: `krew` is an autonomous AI agent engine. It depends strictly downward on Layer 2 libraries and Layer 1 kernel primitives.
-- **Zero Peer Coupling**: Sibling platforms (`cloud`, `auth`, `dash`) interact with `krew` via defined transports (in-process `pkg/embed` API or network Bridge/Gateway over HTTP/SSE/MCP), avoiding direct circular code ties.
-- **Platform-Agnostic**: Keep `krew` free of platform-specific assumptions or hardcoded CGO dependencies.
-- **Strict Separation of Concerns**:
-  - `pkg/agent`: ReAct autonomous reasoning-action execution loop and streaming events.
-  - `pkg/tools`: Sandboxed workspace tools (`read_file`, `write_file`, `edit_file`, `list_dir`, `run_command`, `fetch_url`).
-  - `pkg/memory`: Sliding-window message history buffer and context compaction.
-  - `pkg/persona`: Specialized role prompts (`CodingAssistant`, `DevOpsRunner`, `AutonomousWorker`, `GeneralAssistant`).
-  - `pkg/embed`: High-level 3-line ergonomic embedding API.
-  - `pkg/transport`: Transports (HTTP/SSE, Stdio, MCP).
-  - `cmd/krew`: Unified CLI entry point.
+- **The Krewire Pyramid (Layer 3 Devtool)**: `krew` is the developer toolchain CLI. It depends strictly downward on Layer 2 libraries (`krewire/pkg/*`) and Layer 1 kernel primitives.
+- **Pure Devtool Focus**: `krew` contains zero AI engine implementations; all AI capabilities are imported from `krewire/pkg/ai`.
+- **Zero Peer Coupling**: Sibling platforms (`cloud`, `auth`, `dash`) must never be imported by `krew`.
+- **Platform-Agnostic**: Keep `krew` free of platform-specific assumptions or hardcoded CGO dependencies (`CGO_ENABLED=0`).
 - **Single Source of Truth (SSOT)**: Never duplicate tool schemas or version constants.
 
 ## Quality Gates
@@ -35,7 +32,7 @@ Before pushing changes:
 gofmt -l .
 go vet ./...
 go test -v ./...
-go build -o bin/krew ./cmd/krew
+CGO_ENABLED=0 go build -o bin/krew ./cmd/krew
 ```
 
 ## Commit Discipline

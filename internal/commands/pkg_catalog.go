@@ -176,7 +176,7 @@ func CanonicalPackageCatalog() []model.PackageMetadata {
 		},
 		{
 			Name:                 "ai",
-			ImportPath:           "github.com/krewire/krew/pkg/ai",
+			ImportPath:           "github.com/krewire/krewire/pkg/ai",
 			Layer:                2,
 			Purpose:              "Native Go AI SDK: provider streaming, function calling, and structured JSON schemas",
 			License:              "MIT",

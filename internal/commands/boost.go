@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/krewire/krew/pkg/boost"
+	"github.com/krewire/krewire/pkg/ai/boost"
 	"github.com/krewire/krewire/pkg/errs"
 )
 

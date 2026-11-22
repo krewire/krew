@@ -58,7 +58,7 @@ This command allows modern AI IDEs (Antigravity, Cursor, Claude Desktop) to conn
 
 ## Embedding Krew in Your Go Application
 
-Import `github.com/krewire/krew/pkg/embed` directly:
+Import `github.com/krewire/krewire/pkg/ai/embed` directly:
 
 ```go
 package main
@@ -66,8 +66,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/krewire/krew/pkg/embed"
-	"github.com/krewire/krew/pkg/persona"
+	"github.com/krewire/krewire/pkg/ai/embed"
+	"github.com/krewire/krewire/pkg/ai/persona"
 )
 
 func main() {

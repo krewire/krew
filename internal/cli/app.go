@@ -1,29 +1,18 @@
 package cli
 
 import (
-	"flag"
-	"fmt"
-	"os"
-
 	"github.com/krewire/krew/internal/commands"
 	kiwver "github.com/krewire/krew/internal/version"
-	"github.com/krewire/krewire/pkg/errs"
 	_ "github.com/krewire/krewire/pkg/orm/mysql"
 	_ "github.com/krewire/krewire/pkg/orm/postgres"
 	_ "github.com/krewire/krewire/pkg/orm/sqlite"
 	"github.com/krewire/tui"
 )
 
-// BuildApp builds the unified TUI CLI application with all devtools and AI agent commands.
+// BuildApp builds the unified TUI CLI application with all developer toolchain commands.
 func BuildApp(name string) *tui.App {
 	app := tui.NewApp(name, kiwver.VersionString()).
-		WithDescription("Autonomous AI Agent Engine & Developer Toolchain").
-		// Agent commands
-		Command(tui.NewCommand("chat", "start an interactive AI coding session in the terminal", registerChatFlags, runChatCmd).WithGroup("agent").WithCore().WithExample("krew chat")).
-		Command(tui.NewCommand("agent", "execute an autonomous task or prompt headless to completion", registerAgentFlags, runAgentCmd).WithGroup("agent").WithCore().WithExample("krew agent \"Add unit tests for auth\"")).
-		Command(tui.NewCommand("daemon", "launch HTTP/REST and Server-Sent Events (SSE) server for remote hosting", registerDaemonFlags, runDaemonCmd).WithGroup("agent").WithExample("krew daemon --port 8080")).
-		Command(tui.NewCommand("sessions", "list past conversation sessions with message and token counts", registerSessionsFlags, runSessionsCmd).WithGroup("agent").WithExample("krew sessions")).
-		Command(tui.NewCommand("export", "export conversation session transcript to markdown", registerExportFlags, runExportCmd).WithGroup("agent").WithExample("krew export <session-id>")).
+		WithDescription("Unified Developer Toolchain for the Krewire Ecosystem").
 		// Inspect commands
 		Command(tui.NewCommand("version", "print CLI and framework versions", nil, commands.RunVersion).WithGroup("inspect").WithExample("krew version")).
 		Command(tui.NewCommand("info", "print environment and project information", nil, commands.RunInfo).WithGroup("inspect").WithExample("krew info")).
@@ -40,8 +29,8 @@ func BuildApp(name string) *tui.App {
 		Command(tui.NewCommand("dev", "live development server: watches files, rebuilds, and hot-reloads sites/books or restarts apps and services", commands.RegisterDev, commands.RunDev).WithGroup("develop").WithCore().WithExample("krew dev")).
 		Command(tui.NewCommand("build", "build the project for production (site, book, app, cli, worker, service, gateway, infra)", commands.RegisterBuild, commands.RunBuild).WithGroup("build").WithCore().WithExample("krew build")).
 		Command(tui.NewCommand("bundle", "bundle static CSS and JS into assets/krewire.css and assets/krewire.js", commands.RegisterBundle, commands.RunBundle).WithGroup("build").WithExample("krew bundle --minify")).
-		Command(tui.NewCommand("serve", "preview production output without watching: serves the built site/book from .krewire/build (run 'krew build' first); apps and CLIs run as with 'krew run'", commands.RegisterServe, commands.RunServe).WithGroup("build").WithExample("krew build && krew serve --addr :3000")).
-		Command(tui.NewCommand("run", "run once without watching: build and execute the app or CLI binary, a Go file, or a krewire.yaml script\n\nModes:\n  krew run [args...]         build and run project app/cli binary\n  krew run <file.go> [args]  execute standalone Go file with project environment\n  krew run <task>            run a named task defined under scripts in krewire.yaml", commands.RegisterRun, commands.RunRun).WithGroup("develop").WithExample("krew run [task|path/to/file.go] [-- args]")).
+		Command(tui.NewCommand("serve", "preview production output without watching: serves the built site/book from .krewire/build (run 'krew build' first); apps and CLIs run as with 'krew run'", commands.RegisterServe, commands.RunServe).WithGroup("build").WithExample("krew serve --port 8080")).
+		Command(tui.NewCommand("run", "execute a runnable target or run an arbitrary Go file with framework runtime support", commands.RegisterRun, commands.RunRun).WithGroup("develop").WithCore().WithExample("krew run [task|path/to/file.go] [-- args]")).
 		Command(tui.NewCommand("test", "run the tests of the current project", commands.RegisterTest, commands.RunTest).WithGroup("develop").WithCore().WithExample("krew test")).
 		Command(tui.NewCommand("verify", "run reproducible quality gates and produce evidence-backed task verification record", commands.RegisterVerify, commands.RunVerify).WithGroup("develop").WithCore().WithExample("krew verify --json")).
 		Command(tui.NewCommand("vet", "run go vet, security posture audit, and vulnerability checks", commands.RegisterVet, commands.RunVet).WithGroup("develop").WithExample("krew vet --sec --vuln")).
@@ -70,83 +59,4 @@ func BuildApp(name string) *tui.App {
 	}
 
 	return app
-}
-
-func registerChatFlags(fs *flag.FlagSet) {
-	fs.String("persona", DefaultPersonaName, "Agent persona")
-	fs.String("workspace", DefaultWorkspaceDir, "Workspace directory")
-	fs.String("model", "", "Model override")
-	fs.Int("max-steps", DefaultMaxSteps, "Maximum steps per prompt")
-	fs.String("resume", "", "Resume saved session ID")
-	fs.String("sessions-dir", "", "Custom sessions directory")
-}
-
-func runChatCmd(fs *flag.FlagSet) errs.ExitCode {
-	runChat(flagArgs(fs))
-	return errs.ExitCodeSuccess
-}
-
-func registerAgentFlags(fs *flag.FlagSet) {
-	fs.String("persona", DefaultPersonaName, "Agent persona")
-	fs.String("workspace", DefaultWorkspaceDir, "Workspace directory")
-	fs.String("model", "", "Model override")
-	fs.Int("max-steps", DefaultMaxSteps, "Maximum steps per prompt")
-	fs.String("brief", "", "Path to markdown Task Brief file or GitHub issue")
-	fs.Bool("sdlc", false, "Execute governed SDLC workflow (Understand -> Plan -> Implement -> Verify -> Review -> Report)")
-}
-
-func runAgentCmd(fs *flag.FlagSet) errs.ExitCode {
-	briefVal := ""
-	if f := fs.Lookup("brief"); f != nil {
-		briefVal = f.Value.String()
-	}
-	remaining := fs.Args()
-	if len(remaining) == 0 && briefVal == "" {
-		fmt.Fprintln(os.Stderr, "error: prompt or --brief required for 'krew agent'")
-		return errs.ExitCodeUsage
-	}
-	runSingleShot(flagArgs(fs))
-	return errs.ExitCodeSuccess
-}
-
-func registerDaemonFlags(fs *flag.FlagSet) {
-	fs.Int("port", DefaultServePort, "Port to listen on")
-	fs.String("host", DefaultServeHost, "Host address to listen on")
-	fs.String("persona", DefaultPersonaName, "Default agent persona")
-	fs.String("workspace", DefaultWorkspaceDir, "Workspace directory")
-	fs.String("token", "", "Shared secret Bearer token for authentication")
-	fs.Bool("no-auth", false, "Disable authentication for local loopback development")
-}
-
-func runDaemonCmd(fs *flag.FlagSet) errs.ExitCode {
-	runServe(flagArgs(fs))
-	return errs.ExitCodeSuccess
-}
-
-func registerSessionsFlags(fs *flag.FlagSet) {
-	fs.String("dir", "", "Custom sessions directory override")
-}
-
-func runSessionsCmd(fs *flag.FlagSet) errs.ExitCode {
-	runSessions(flagArgs(fs))
-	return errs.ExitCodeSuccess
-}
-
-func registerExportFlags(fs *flag.FlagSet) {
-	fs.String("format", DefaultExportFormat, "Export format (default: markdown)")
-	fs.String("dir", "", "Custom sessions directory override")
-}
-
-func runExportCmd(fs *flag.FlagSet) errs.ExitCode {
-	runExport(flagArgs(fs))
-	return errs.ExitCodeSuccess
-}
-
-func flagArgs(fs *flag.FlagSet) []string {
-	var args []string
-	fs.Visit(func(f *flag.Flag) {
-		args = append(args, fmt.Sprintf("--%s=%s", f.Name, f.Value.String()))
-	})
-	args = append(args, fs.Args()...)
-	return args
 }
