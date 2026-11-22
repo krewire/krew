@@ -6,7 +6,7 @@ Welcome to the **Krew** repository documentation. This repository (`github.com/k
 
 - [Architecture & Design](architecture.md): CLI composition root (`cmd/krew`), internal dashboard subsystem (`internal/dashboard`), command execution domains, and private-by-default modularity.
 - [Getting Started](getting-started.md): Installation, local setup, building the `krew` CLI, project scaffolding, database migrations, and developer authentication.
-- [Contributing Guide](contributing.md): Contribution guidelines, testing requirements, quality gates, and code standards.
+- [Contributing Guide](../CONTRIBUTING.md): Contribution guidelines, testing requirements, quality gates, and code standards.
 
 ## Core Capabilities
 

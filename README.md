@@ -13,7 +13,7 @@
 
 - [Architecture & Design](docs/architecture.md): CLI composition root (`cmd/krew`), command domains, internal dashboard subsystem (`internal/dashboard`), and private-by-default modularity.
 - [Getting Started](docs/getting-started.md): Installation, project creation, database migrations, developer authentication, and local development.
-- [Contributing Guide](docs/contributing.md): Quality gates, pure-Go invariant, and command contribution guidelines.
+- [Contributing Guide](CONTRIBUTING.md): Quality gates, pure-Go invariant, and command contribution guidelines.
 
 ---
 
