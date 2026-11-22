@@ -72,9 +72,6 @@ jobs:
       - name: Static Analysis
         run: go vet ./...
 
-      - name: Architectural Decoupling & Layering
-        run: go test -v ./layering_test.go
-
       - name: Unit Tests
         run: go test -v ./...
 

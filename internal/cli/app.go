@@ -12,7 +12,13 @@ import (
 // BuildApp builds the unified TUI CLI application with all developer toolchain commands.
 func BuildApp(name string) *tui.App {
 	app := tui.NewApp(name, kiwver.VersionString()).
-		WithDescription("Unified Developer Toolchain for the Krewire Ecosystem").
+		WithDescription("Autonomous AI Agent Engine & Developer Toolchain").
+		// Agent commands
+		Command(tui.NewCommand("chat", "start an interactive AI coding session in the terminal", registerChatFlags, runChatCmd).WithGroup("agent").WithCore().WithExample("krew chat")).
+		Command(tui.NewCommand("agent", "execute an autonomous task or prompt headless to completion", registerAgentFlags, runAgentCmd).WithGroup("agent").WithCore().WithExample("krew agent \"Add unit tests for auth\"")).
+		Command(tui.NewCommand("daemon", "launch HTTP/REST and Server-Sent Events (SSE) server for remote hosting", registerDaemonFlags, runDaemonCmd).WithGroup("agent").WithExample("krew daemon --port 8080")).
+		Command(tui.NewCommand("sessions", "list past conversation sessions with message and token counts", registerSessionsFlags, runSessionsCmd).WithGroup("agent").WithExample("krew sessions")).
+		Command(tui.NewCommand("export", "export conversation session transcript to markdown", registerExportFlags, runExportCmd).WithGroup("agent").WithExample("krew export <session-id>")).
 		// Inspect commands
 		Command(tui.NewCommand("version", "print CLI and framework versions", nil, commands.RunVersion).WithGroup("inspect").WithExample("krew version")).
 		Command(tui.NewCommand("info", "print environment and project information", nil, commands.RunInfo).WithGroup("inspect").WithExample("krew info")).
@@ -52,7 +58,8 @@ func BuildApp(name string) *tui.App {
 		Command(tui.NewCommand("seed", "seed the database with records via Go seeders and factories", commands.RegisterSeed, commands.RunSeed).WithGroup("project").WithExample("krew seed --class DatabaseSeeder")).
 		Command(tui.NewCommand("db:seed", "alias for krew seed", commands.RegisterSeed, commands.RunSeed).WithGroup("project").WithHidden(true).WithExample("krew db:seed")).
 		Command(tui.NewCommand("ui", "browse, install, and diff kui components: list, info <name>, add <name|pack:x>, diff <name>", commands.RegisterUI, commands.RunUI).WithGroup("project").WithExample("krew ui list")).
-		Command(tui.NewCommand("pkg", "manage standalone .kiw component packages: init <name>, pack [dir], add <src>, list, export", commands.RegisterPkg, commands.RunPkg).WithGroup("project").WithCore().WithExample("krew pkg pack ./my-ui"))
+		Command(tui.NewCommand("pkg", "manage standalone .kiw component packages: init <name>, pack [dir], add <src>, list, export", commands.RegisterPkg, commands.RunPkg).WithGroup("project").WithCore().WithExample("krew pkg pack ./my-ui")).
+		Command(tui.NewCommand("auth", "manage developer authentication: login, logout, status", commands.RegisterAuth, commands.RunAuth).WithGroup("project").WithCore().WithExample("krew auth login --token <token>"))
 
 	for name, hint := range commands.Hints {
 		app.WithHint(name, hint)

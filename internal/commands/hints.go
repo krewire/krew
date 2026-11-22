@@ -19,8 +19,7 @@ var Hints = map[string]string{
 	"upgrade":   "krew update  (project dependencies) or krew self-update  (the krew CLI)",
 	"workspace": "krew dash  (AI-native virtual workspace & sandboxes) or krew ws  (go.work multi-repo)",
 	"dashboard": "krew dash  (local dev dashboard, services, logs, sandboxes)",
-	"chat":      "AI features have moved to krewire (use 'ai chat' or import github.com/krewire/krewire/pkg/ai)",
-	"agent":     "AI features have moved to krewire (use 'ai agent' or import github.com/krewire/krewire/pkg/ai)",
-	"daemon":    "AI features have moved to krewire (use 'ai daemon' or import github.com/krewire/krewire/pkg/ai)",
-	"sessions":  "AI features have moved to krewire (use 'ai sessions' or import github.com/krewire/krewire/pkg/ai)",
+	"login":     "krew auth login  (authenticate developer session)",
+	"logout":    "krew auth logout  (remove active credentials)",
+	"whoami":    "krew auth status  (display current authentication identity)",
 }

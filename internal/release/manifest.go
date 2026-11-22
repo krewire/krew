@@ -33,7 +33,7 @@ var Modules = []Manifest{
 // dependents maps each module to the modules that require it.
 var dependents = map[string][]string{
 	"krewire": {"krew", "auth", "cloud", "dash"},
-	"krew":    {"dash"},
+	"krew":    {},
 	"auth":    {"cloud", "dash"},
 	"cloud":   {},
 	"dash":    {},
@@ -54,7 +54,6 @@ var DefaultRequirements = map[string]map[string]version.Version{
 	},
 	"dash": {
 		"krewire": krewire.Version,
-		"krew":    krewire.Version,
 		"auth":    krewire.Version,
 	},
 }

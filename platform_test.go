@@ -9,6 +9,18 @@ import (
 	"testing"
 )
 
+func repoDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "krew", "go.mod")); err == nil {
+		return filepath.Join(dir, "krew")
+	}
+	return dir
+}
+
 // Verify pure Go execution without CGO dependencies.
 func TestPlatform_PureGo(t *testing.T) {
 	if testing.Short() {

@@ -154,8 +154,8 @@ func TestReadEcosystemVersionsAndRequirements(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadEcosystemRequirements failed: %v", err)
 	}
-	if len(reqs["dash"]) < 3 {
-		t.Errorf("dash requirements = %v, want at least 3", reqs["dash"])
+	if len(reqs["dash"]) < 2 {
+		t.Errorf("dash requirements = %v, want at least 2", reqs["dash"])
 	}
 }
 

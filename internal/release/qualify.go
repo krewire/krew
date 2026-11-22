@@ -296,7 +296,7 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 			VersionConstraint: "^0.2.0",
 			Status:            StatusSupported,
 			Owner:             "@krewire/team-agent",
-			Description:       "Verify agent orchestration and task streaming contract between Krew and Dash",
+			Description:       "Verify autonomous AI and workspace protocol compatibility between Krew and Dash via core foundation",
 			ContractCheck: func(ctx *QualificationContext) error {
 				dashDir := filepath.Join(ctx.WorkspaceRoot, "dash")
 				goModPath := filepath.Join(dashDir, "go.mod")
@@ -304,12 +304,12 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 				if err != nil {
 					return fmt.Errorf("missing dash/go.mod: %w", err)
 				}
-				if !strings.Contains(string(modData), "github.com/krewire/krew") {
-					return fmt.Errorf("dash/go.mod must require github.com/krewire/krew")
+				if !strings.Contains(string(modData), "github.com/krewire/krewire") {
+					return fmt.Errorf("dash/go.mod must require github.com/krewire/krewire")
 				}
 				if reqs, ok := ctx.ModuleRequirements["dash"]; ok {
-					if _, hasKrew := reqs["krew"]; !hasKrew {
-						return fmt.Errorf("dash version.go must declare EcosystemRequires for krew")
+					if _, hasKrewire := reqs["krewire"]; !hasKrewire {
+						return fmt.Errorf("dash version.go must declare EcosystemRequires for krewire")
 					}
 				}
 				return nil
