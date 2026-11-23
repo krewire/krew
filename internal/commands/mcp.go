@@ -20,7 +20,7 @@ import (
 
 // RegisterMCP registers flags for the mcp command.
 func RegisterMCP(fs *flag.FlagSet) {
-	fs.Bool("stdio", true, "run MCP server over standard input/output (for Cursor, Claude, Antigravity)")
+	fs.Bool("stdio", false, "run MCP server over standard input/output (default mode when --port is not specified)")
 	fs.String("port", "", "run MCP server over HTTP/SSE on the specified port (e.g. 4000)")
 	fs.String("host", "127.0.0.1", "host address for HTTP/SSE MCP server (loopback default)")
 	fs.String("auth-token", "", "authentication token required for HTTP/SSE MCP requests (mandatory for non-loopback binds)")
@@ -45,6 +45,14 @@ func isLoopback(host string) bool {
 
 // RunMCP starts the Model Context Protocol (MCP) server for Krewire projects (KWN-MCP-001).
 func RunMCP(fs *flag.FlagSet) errs.ExitCode {
+	port := flagValue(fs, "port")
+	stdioProvided := flagProvided(fs, "stdio")
+	portProvided := flagProvided(fs, "port") && port != ""
+
+	if stdioProvided && portProvided {
+		return fail(fmt.Errorf("cannot specify both --stdio and --port: choose either standard I/O or HTTP transport"))
+	}
+
 	root, err := os.Getwd()
 	if err != nil {
 		return fail(err)
@@ -63,8 +71,7 @@ func RunMCP(fs *flag.FlagSet) errs.ExitCode {
 		cancel()
 	}()
 
-	port := flagValue(fs, "port")
-	if port != "" {
+	if portProvided {
 		host := flagValue(fs, "host")
 		if host == "" {
 			host = "127.0.0.1"
@@ -116,8 +123,11 @@ func RunMCP(fs *flag.FlagSet) errs.ExitCode {
 		transport.Mount(mux, "/mcp")
 
 		httpSrv := &http.Server{
-			Addr:    addr,
-			Handler: mux,
+			Addr:              addr,
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			IdleTimeout:       120 * time.Second,
 		}
 
 		tm := term.NewTerminal()
@@ -143,7 +153,7 @@ func RunMCP(fs *flag.FlagSet) errs.ExitCode {
 
 		go func() {
 			<-ctx.Done()
-			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 3*time.Second)
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer shutdownCancel()
 			_ = httpSrv.Shutdown(shutdownCtx)
 		}()
@@ -154,7 +164,7 @@ func RunMCP(fs *flag.FlagSet) errs.ExitCode {
 		return errs.ExitCodeSuccess
 	}
 
-	// Default: Run stdio transport
+	// Default or explicit STDIO transport
 	if err := mcp.RunStdio(ctx, srv, os.Stdin, os.Stdout); err != nil && err != context.Canceled {
 		return fail(err)
 	}

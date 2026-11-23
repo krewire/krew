@@ -69,3 +69,15 @@ func TestRunMCP_NonLoopback_RefusedWithoutAuth(t *testing.T) {
 		t.Errorf("expected RunMCP to fail when binding to 0.0.0.0 without auth token, got exit code %d", code)
 	}
 }
+
+func TestRunMCP_ConflictingFlags_Refused(t *testing.T) {
+	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
+	RegisterMCP(fs)
+	_ = fs.Set("stdio", "true")
+	_ = fs.Set("port", "4000")
+
+	code := RunMCP(fs)
+	if code == 0 {
+		t.Errorf("expected RunMCP to fail when both --stdio and --port are set, got exit code %d", code)
+	}
+}

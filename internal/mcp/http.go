@@ -5,8 +5,10 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -15,8 +17,8 @@ import (
 	"time"
 )
 
-// SecurityOptions defines origin allowlists, host validation, authentication, and rate limiting
-// for the local MCP HTTP transport.
+// SecurityOptions defines origin allowlists, host validation, authentication, rate limiting,
+// and resource bounds for the local MCP HTTP transport.
 type SecurityOptions struct {
 	// AllowedOrigins lists explicit origins permitted to make cross-origin requests.
 	// Supported IDE schemes (vscode-webview://, cursor://, jetbrains://, antigravity://)
@@ -36,6 +38,15 @@ type SecurityOptions struct {
 
 	// RateWindow specifies the sliding window duration for rate limiting (default: 1 minute).
 	RateWindow time.Duration
+
+	// MaxRequestBodySize limits the maximum allowed request body size in bytes (default: 4MB).
+	MaxRequestBodySize int64
+
+	// MaxSessions limits the maximum concurrent SSE sessions (default: 64).
+	MaxSessions int
+
+	// QueueSize limits the buffered responses per SSE session (default: 32).
+	QueueSize int
 }
 
 // ipRateLimiter implements an in-memory sliding window rate limiter per client IP.
@@ -98,6 +109,7 @@ type HTTPTransport struct {
 	srv      *Server
 	sec      SecurityOptions
 	limiter  *ipRateLimiter
+	prefix   string
 	mu       sync.RWMutex
 	sessions map[string]chan *Response
 }
@@ -114,10 +126,20 @@ func NewHTTPTransport(srv *Server, opts ...SecurityOptions) *HTTPTransport {
 	if sec.RateWindow <= 0 {
 		sec.RateWindow = time.Minute
 	}
+	if sec.MaxRequestBodySize <= 0 {
+		sec.MaxRequestBodySize = 4 * 1024 * 1024 // 4 MB default
+	}
+	if sec.MaxSessions <= 0 {
+		sec.MaxSessions = 64
+	}
+	if sec.QueueSize <= 0 {
+		sec.QueueSize = 32
+	}
 	return &HTTPTransport{
 		srv:      srv,
 		sec:      sec,
 		limiter:  newIPRateLimiter(sec.RateLimit, sec.RateWindow),
+		prefix:   "/mcp",
 		sessions: make(map[string]chan *Response),
 	}
 }
@@ -125,6 +147,13 @@ func NewHTTPTransport(srv *Server, opts ...SecurityOptions) *HTTPTransport {
 // Mount attaches MCP routes (/sse and /message) under prefix to the given mux.
 func (h *HTTPTransport) Mount(mux *http.ServeMux, prefix string) {
 	prefix = stringsTrimSlash(prefix)
+	if prefix == "" {
+		prefix = "/mcp"
+	}
+	h.mu.Lock()
+	h.prefix = prefix
+	h.mu.Unlock()
+
 	ssePath := prefix + "/sse"
 	msgPath := prefix + "/message"
 
@@ -139,27 +168,30 @@ func stringsTrimSlash(s string) string {
 	return s
 }
 
-func (h *HTTPTransport) registerSession(id string) chan *Response {
-	ch := make(chan *Response, 32)
+func (h *HTTPTransport) registerSession(id string) (chan *Response, bool) {
 	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.sessions) >= h.sec.MaxSessions {
+		return nil, false
+	}
+	ch := make(chan *Response, h.sec.QueueSize)
 	h.sessions[id] = ch
-	h.mu.Unlock()
-	return ch
+	return ch, true
 }
 
 func (h *HTTPTransport) unregisterSession(id string) {
 	h.mu.Lock()
+	defer h.mu.Unlock()
 	if ch, ok := h.sessions[id]; ok {
-		close(ch)
 		delete(h.sessions, id)
+		close(ch)
 	}
-	h.mu.Unlock()
 }
 
 func (h *HTTPTransport) getSession(id string) (chan *Response, bool) {
 	h.mu.RLock()
+	defer h.mu.RUnlock()
 	ch, ok := h.sessions[id]
-	h.mu.RUnlock()
 	return ch, ok
 }
 
@@ -331,7 +363,8 @@ func (h *HTTPTransport) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		w.Header().Set("Allow", "GET, OPTIONS")
+		http.Error(w, "method not allowed: only GET and OPTIONS are supported", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -352,7 +385,12 @@ func (h *HTTPTransport) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionID := generateSessionID()
-	respCh := h.registerSession(sessionID)
+	respCh, ok := h.registerSession(sessionID)
+	if !ok {
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, "maximum concurrent SSE sessions reached", http.StatusServiceUnavailable)
+		return
+	}
 	defer h.unregisterSession(sessionID)
 
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -360,16 +398,29 @@ func (h *HTTPTransport) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
 
-	// Send endpoint event for MCP clients
-	endpointURI := fmt.Sprintf("/mcp/message?sessionId=%s", sessionID)
+	// Send endpoint event for MCP clients with dynamically mounted prefix
+	h.mu.RLock()
+	prefix := h.prefix
+	h.mu.RUnlock()
+	if prefix == "" {
+		prefix = "/mcp"
+	}
+	endpointURI := fmt.Sprintf("%s/message?sessionId=%s", prefix, sessionID)
 	fmt.Fprintf(w, "event: endpoint\ndata: %s\n\n", endpointURI)
 	flusher.Flush()
+
+	// Keepalive ticker to prevent connection drops across proxies/NATs
+	keepaliveTicker := time.NewTicker(15 * time.Second)
+	defer keepaliveTicker.Stop()
 
 	ctx := r.Context()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-keepaliveTicker.C:
+			fmt.Fprintf(w, ": keepalive\n\n")
+			flusher.Flush()
 		case resp, ok := <-respCh:
 			if !ok {
 				return
@@ -401,7 +452,16 @@ func (h *HTTPTransport) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		w.Header().Set("Allow", "POST, OPTIONS")
+		http.Error(w, "method not allowed: only POST and OPTIONS are supported", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Content-Type enforcement
+	ct := r.Header.Get("Content-Type")
+	mediaType, _, _ := mime.ParseMediaType(ct)
+	if mediaType != "application/json" {
+		http.Error(w, "unsupported content type: application/json required", http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -415,8 +475,15 @@ func (h *HTTPTransport) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Bound request body to prevent unbounded memory allocation (HTTP 413)
+	r.Body = http.MaxBytesReader(w, r.Body, h.sec.MaxRequestBodySize)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, fmt.Sprintf("request payload exceeds maximum limit of %d bytes", h.sec.MaxRequestBodySize), http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, "error reading request body", http.StatusBadRequest)
 		return
 	}
@@ -447,17 +514,26 @@ func (h *HTTPTransport) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sessionID != "" {
-		if ch, ok := h.getSession(sessionID); ok {
-			if resp != nil {
-				select {
-				case ch <- resp:
-				default:
-					// buffer full, avoid blocking
-				}
-			}
-			w.WriteHeader(http.StatusAccepted)
+		ch, ok := h.getSession(sessionID)
+		if !ok {
+			http.Error(w, "session not found or expired", http.StatusNotFound)
 			return
 		}
+
+		if resp != nil {
+			select {
+			case ch <- resp:
+				w.WriteHeader(http.StatusAccepted)
+				return
+			default:
+				// Buffer is saturated; return deterministic overload response instead of silently dropping
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, "session queue saturated: response channel is full", http.StatusServiceUnavailable)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusAccepted)
+		return
 	}
 
 	// Direct synchronous HTTP response
