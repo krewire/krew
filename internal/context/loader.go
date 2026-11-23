@@ -171,7 +171,7 @@ func populatePillarRules(ctx *model.ProjectContext, wsRoot, targetDir string) {
 			ID:        "PIL-SUS-002",
 			Scope:     model.ScopeModule,
 			Category:  "pillar",
-			Statement: "Zero npm / Node.js Runtime: Core libraries and UI components must compile purely in Go.",
+			Statement: "Pure Go Runtime: Core libraries and UI components must compile purely in Go.",
 			Provenance: model.Provenance{
 				File:       agentsFile,
 				Precedence: model.PrecedenceWorkspaceRoot,
