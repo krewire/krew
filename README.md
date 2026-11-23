@@ -57,7 +57,10 @@
 ### 6. AI Agent & MCP Integration
 - `krew chat` — Start an interactive AI coding session in the terminal.
 - `krew agent <prompt> [--brief=<path>] [--sdlc]` — Execute an autonomous task or prompt headless to completion.
-- `krew mcp [--stdio]` — Native Model Context Protocol (MCP) server for IDE coding assistants.
+- `krew mcp [--stdio] [--port=<port>] [--host=<host>] [--auth-token=<token>]` — Native Model Context Protocol (MCP) server for IDE coding assistants.
+  - Defaults to STDIO transport or secure loopback HTTP (`127.0.0.1`) with Host and Origin validation (never responds with wildcard CORS).
+  - Binding to non-loopback addresses requires mandatory `--auth-token` (or `KREW_MCP_TOKEN`).
+  - Built-in per-IP rate limiting guards tool execution endpoints against automated abuse.
 - `krew boost` — Scaffold Boost AI agent configuration (`AGENTS.md`, `.cursor/rules`, etc.).
 
 ---

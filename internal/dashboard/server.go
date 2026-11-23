@@ -61,7 +61,9 @@ func (d *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/events", d.handleEvents)
 
 	mcpSrv := mcp.NewServer(d.root, d.cfg)
-	mcpTransport := mcp.NewHTTPTransport(mcpSrv)
+	mcpTransport := mcp.NewHTTPTransport(mcpSrv, mcp.SecurityOptions{
+		AllowedHosts: []string{d.host},
+	})
 	mcpTransport.Mount(mux, "/mcp")
 
 	return mux
