@@ -268,22 +268,9 @@ func releaseModuleNames() string {
 	return strings.Join(names, ", ")
 }
 
-// findReleaseWorkspaceRoot walks up from the working directory to locate go.work.
+// findReleaseWorkspaceRoot walks up from the working directory to locate the ecosystem workspace root.
 func findReleaseWorkspaceRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.work")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", fmt.Errorf("release: go.work not found (run from within the Krewire workspace)")
-		}
-		dir = parent
-	}
+	return release.FindWorkspaceRoot()
 }
 
 // printReleaseNotes prints Conventional-Commits-style notes per released module.

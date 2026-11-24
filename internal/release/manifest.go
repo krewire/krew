@@ -63,14 +63,15 @@ var (
 	reqItemRe     = regexp.MustCompile(`"([a-zA-Z0-9_-]+)"\s*:\s*version\.MustParseVersion\("([^"]+)"\)`)
 )
 
-// FindWorkspaceRoot walks up from working directory or executable location to locate go.work.
+// FindWorkspaceRoot walks up from working directory or executable location to locate the ecosystem workspace root.
 func FindWorkspaceRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.work")); err == nil {
+		// The ecosystem workspace root contains the foundational krewire repo and AGENTS.md
+		if _, err := os.Stat(filepath.Join(dir, "krewire", "pkg")); err == nil {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
@@ -79,7 +80,7 @@ func FindWorkspaceRoot() (string, error) {
 		}
 		dir = parent
 	}
-	return "", fmt.Errorf("go.work not found")
+	return "", fmt.Errorf("ecosystem workspace root not found")
 }
 
 // resolveModuleVersionPath finds the path to the version file for the named module.

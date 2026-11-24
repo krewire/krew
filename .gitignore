@@ -29,5 +29,3 @@ coverage.txt
 !.env.example
 
 # Go workspace
-go.work
-go.work.sum
