@@ -1,41 +1,29 @@
 # AGENTS.md — Krew Developer Toolchain Monorepo
 
-Agent guide for AI agents working inside the `krew` repository
-(module = `github.com/krewire/krew`).
+Agent guide for AI agents working inside the `krew` developer toolchain repository.
 
-`krew` is the unified developer toolchain and CLI for the Krewire digital ecosystem:
-providing project scaffolding (`new`, `init`, `make`), live dev server & reload (`dev`, `run`, `serve`),
-production builds (`build`, `bundle`), database migrations and seeders (`migrate`, `seed`),
-quality gates (`test`, `verify`, `vet`, `fmt`), component management (`ui`, `pkg`, `add`),
-workspace orchestration (`dash`, `ws`, `gateway`, `worker`), and IDE integration (`mcp`).
+`krew` is the universal developer CLI and build toolchain for the Krewire ecosystem.
 
-All AI agent engine packages and runtime features reside in the core foundation at
-`github.com/krewire/krewire/pkg/ai`. `krew` is strictly a developer toolchain.
+## Monorepo Layout (Pure Multi-Module Monorepo)
 
-## Language
+Coordinated via `go.work` across 4 independent Go modules:
+- `cli`: Binary entrypoint (`main.go`).
+- `core`: Toolchain commands, scaffolding, dev server, builds, MCP devtools server.
+- `conformance`: End-to-end command contract and platform conformance tests.
+- `version`: Version metadata.
 
-- **Write all stored artifacts in English** — code, docs, commit messages, specs, reports.
-- If the human writes in Indonesian or another language, reply in the human's language in chat, but keep all repository files in English.
+## Invariants
 
-## Architecture & Code Discipline
-
-- **The Krewire Pyramid (Layer 3 Devtool)**: `krew` is the developer toolchain CLI. It depends strictly downward on Layer 2 libraries (`krewire/pkg/*`) and Layer 1 kernel primitives.
-- **Pure Devtool Focus**: `krew` contains zero AI engine implementations; all AI capabilities are imported from `krewire/pkg/ai`.
+- **The Krewire Pyramid (Layer 3 Devtool)**: `krew` depends strictly downward on Layer 2 libraries (`krewire/*`) and Layer 1 kernel primitives.
+- **Port & Adapter Integration**: External database drivers and frontend compilers are integrated through `krewire/hub/*`.
 - **Zero Peer Coupling**: Sibling platforms (`cloud`, `auth`, `dash`) must never be imported by `krew`.
-- **Platform-Agnostic**: Keep `krew` free of platform-specific assumptions or hardcoded CGO dependencies (`CGO_ENABLED=0`).
-- **Single Source of Truth (SSOT)**: Never duplicate tool schemas or version constants.
+- **Pure Go & CGO-Free**: All code must compile cleanly with `CGO_ENABLED=0`.
 
 ## Quality Gates
 
-Before pushing changes:
 ```bash
 gofmt -l .
 go vet ./...
-go test -v ./...
-CGO_ENABLED=0 go build -o bin/krew ./cmd/krew
+go test ./...
+CGO_ENABLED=0 go build ./...
 ```
-
-## Commit Discipline
-
-- **Conventional Commits**: `feat|fix|docs|test|refactor|perf|chore(scope): desc`.
-- Keep commit messages concise, precise, and in English.
