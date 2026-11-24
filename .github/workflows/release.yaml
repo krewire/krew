@@ -122,6 +122,12 @@ jobs:
           if grep -q "replace.*../krewire" go.mod && [ ! -d "../krewire" ]; then
             git clone --depth 1 https://github.com/krewire/krewire.git ../krewire
           fi
+          if grep -q "replace.*../tui" go.mod && [ ! -d "../tui" ]; then
+            git clone --depth 1 https://github.com/krewire/tui.git ../tui
+          fi
+          if grep -q "replace.*../ui" go.mod && [ ! -d "../ui" ]; then
+            git clone --depth 1 https://github.com/krewire/ui.git ../ui
+          fi
 
       - name: Formatting Check
         run: |
@@ -130,6 +136,9 @@ jobs:
             echo "gofmt unformatted files: $UNFORMATTED"
             exit 1
           fi
+
+      - name: Module Tidy & Verification
+        run: go mod tidy
 
       - name: Static Analysis
         run: go vet ./...
@@ -158,6 +167,12 @@ jobs:
         run: |
           if grep -q "replace.*../krewire" go.mod && [ ! -d "../krewire" ]; then
             git clone --depth 1 https://github.com/krewire/krewire.git ../krewire
+          fi
+          if grep -q "replace.*../tui" go.mod && [ ! -d "../tui" ]; then
+            git clone --depth 1 https://github.com/krewire/tui.git ../tui
+          fi
+          if grep -q "replace.*../ui" go.mod && [ ! -d "../ui" ]; then
+            git clone --depth 1 https://github.com/krewire/ui.git ../ui
           fi
 
       - name: Compile Multi-Platform Binaries
