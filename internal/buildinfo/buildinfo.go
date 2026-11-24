@@ -3,6 +3,7 @@
 package buildinfo
 
 import (
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 
@@ -45,9 +46,41 @@ func KnownVersion(path string) string {
 
 // ResolveVersion returns the effective version of the module at path.
 func ResolveVersion(path string) (version string, fromSource bool) {
-	v := ModuleVersion(path)
-	if v != "" && v != DevelVersion && !strings.HasPrefix(v, "v0.0.0-") && !strings.Contains(v, "+dirty") {
-		return v, false
+	bi, ok := debug.ReadBuildInfo()
+	if ok {
+		if bi.Main.Path == path {
+			if bi.Main.Version != "" && bi.Main.Version != DevelVersion && !strings.HasPrefix(bi.Main.Version, "v0.0.0-") && !strings.Contains(bi.Main.Version, "+dirty") {
+				return bi.Main.Version, false
+			}
+			if known := KnownVersion(path); known != "" {
+				return known, true
+			}
+			return bi.Main.Version, true
+		}
+		for _, dep := range bi.Deps {
+			if dep.Path == path {
+				// Detect local source builds (go.work or local directory replace)
+				if dep.Replace != nil {
+					rep := dep.Replace
+					if rep.Version == "" || rep.Version == DevelVersion || strings.HasPrefix(rep.Path, ".") || filepath.IsAbs(rep.Path) {
+						if known := KnownVersion(path); known != "" {
+							return known, true
+						}
+						if rep.Version != "" {
+							return rep.Version, true
+						}
+						return dep.Version, true
+					}
+				}
+				if dep.Version != "" && dep.Version != DevelVersion && !strings.HasPrefix(dep.Version, "v0.0.0-") && !strings.Contains(dep.Version, "+dirty") {
+					return dep.Version, false
+				}
+				if known := KnownVersion(path); known != "" {
+					return known, true
+				}
+				return dep.Version, true
+			}
+		}
 	}
 	if known := KnownVersion(path); known != "" {
 		return known, true

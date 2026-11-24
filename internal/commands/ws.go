@@ -179,6 +179,28 @@ func runWsList(fs *flag.FlagSet) errs.ExitCode {
 	return errs.ExitCodeSuccess
 }
 
+func wsCmd(dir string, args ...string) *exec.Cmd {
+	cmd := exec.Command("go", append([]string{"work"}, args...)...)
+	cmd.Dir = dir
+	// If GOWORK=off is present in the environment (e.g. during standalone test suites),
+	// point GOWORK explicitly to the discovered go.work file so workspace commands can operate.
+	env := os.Environ()
+	goWorkPath := filepath.Join(dir, "go.work")
+	found := false
+	for i, e := range env {
+		if strings.HasPrefix(e, "GOWORK=") {
+			env[i] = "GOWORK=" + goWorkPath
+			found = true
+			break
+		}
+	}
+	if !found {
+		env = append(env, "GOWORK="+goWorkPath)
+	}
+	cmd.Env = env
+	return cmd
+}
+
 func runWsAdd(fs *flag.FlagSet, args []string) errs.ExitCode {
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, "krew ws add: missing <path> (e.g., krew ws add ./services/payment)")
@@ -191,8 +213,7 @@ func runWsAdd(fs *flag.FlagSet, args []string) errs.ExitCode {
 		return errs.ExitCodeUsage
 	}
 	path := args[0]
-	cmd := exec.Command("go", "work", "use", path)
-	cmd.Dir = root
+	cmd := wsCmd(root, "use", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -214,8 +235,7 @@ func runWsRemove(fs *flag.FlagSet, args []string) errs.ExitCode {
 		return errs.ExitCodeUsage
 	}
 	path := args[0]
-	cmd := exec.Command("go", "work", "edit", "-dropuse", path)
-	cmd.Dir = root
+	cmd := wsCmd(root, "edit", "-dropuse", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -228,8 +248,7 @@ func runWsRemove(fs *flag.FlagSet, args []string) errs.ExitCode {
 func runWsSync(fs *flag.FlagSet) errs.ExitCode {
 	dir, _ := os.Getwd()
 	root, _, _ := findWorkspaceRoot(dir)
-	cmd := exec.Command("go", "work", "sync")
-	cmd.Dir = root
+	cmd := wsCmd(root, "sync")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
