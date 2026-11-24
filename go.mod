@@ -40,6 +40,7 @@ require (
 )
 
 replace github.com/krewire/krewire => ../krewire
+replace github.com/krewire/krewire/pkg/router => ../krewire/pkg/router
 replace github.com/krewire/tui => ../tui
 replace github.com/krewire/tui/term => ../tui/term
 replace github.com/krewire/ui => ../ui
