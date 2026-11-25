@@ -27,6 +27,12 @@ krew/
 - **Database Migrations**: `krew migrate` supporting Go-native migrations and SQL files with automatic WAL driver tuning via `github.com/krewire/hub/*`.
 - **Model Context Protocol (MCP)**: `krew mcp` providing IDEs with unified tools for verification, scaffolding, and workspace navigation.
 
+## Binary Identity & Compatibility Alias Policy
+
+- **Canonical Executable**: The canonical CLI executable is named `krew` (built from `github.com/krewire/krew/cli`).
+- **Compatibility Alias**: The command `kiw` is maintained as a permanent compatibility alias. In POSIX environments, `kiw` is symlinked to `krew`.
+- **Release Artifacts**: All stable, prerelease, and nightly pipelines build and publish canonical `krew-<os>-<arch>` binaries alongside matching `kiw-<os>-<arch>` binaries in both release assets and checksum manifests (`checksums.txt`), ensuring backward compatibility with legacy installation scripts and downstream workflow automation.
+
 ## Quality Gates
 
 Before submitting changes:

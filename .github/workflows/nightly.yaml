@@ -132,7 +132,22 @@ jobs:
             IFS="/" read -r OS ARCH OUT <<< "$target"
             echo "▶ Compiling ${OUT} (${OS}/${ARCH})..."
             GOOS=$OS GOARCH=$ARCH CGO_ENABLED=0 go build -trimpath -ldflags="$LDFLAGS" -o "dist/${OUT}" ./cli
+            # Provide compatibility alias binary for legacy 'kiw' consumers (ref #25)
+            KIW_OUT="${OUT/krew/kiw}"
+            cp "dist/${OUT}" "dist/${KIW_OUT}"
           done
+
+      - name: Verify Binary Execution Smoke Tests
+        run: |
+          chmod +x dist/krew-linux-amd64 dist/kiw-linux-amd64
+          echo "Testing krew version..."
+          ./dist/krew-linux-amd64 version
+          echo "Testing krew help..."
+          ./dist/krew-linux-amd64 --help
+          echo "Testing kiw alias version..."
+          ./dist/kiw-linux-amd64 version
+          echo "Testing kiw alias help..."
+          ./dist/kiw-linux-amd64 --help
 
       - name: Checksums
         run: |
@@ -177,6 +192,8 @@ jobs:
             ```
             $(cat dist/checksums.txt)
             ```
+            
+            > **Binary Identity Note**: The canonical executable name is `krew`. For backward compatibility with existing automated installations and downstream workflows, identical `kiw-*` alias binaries are published alongside `krew-*`.
           prerelease: true
           draft: false
           files: dist/*
