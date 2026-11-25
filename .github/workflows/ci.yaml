@@ -37,7 +37,7 @@ jobs:
       - name: Provision First-Party Dependencies
         run: |
           mkdir -p ..
-          for repo in krewire hub tui ui; do
+          for repo in krewire hub tui ui agent; do
             if [ ! -d "../${repo}" ]; then
               echo "Cloning krewire/${repo}..."
               git clone --depth 1 "https://github.com/krewire/${repo}.git" "../${repo}"
