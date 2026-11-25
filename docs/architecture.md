@@ -23,7 +23,7 @@ internal/commands      internal/dashboard         internal/scaffold       intern
                                              ▼
                               Foundational Ecosystem Libraries
                               - github.com/krewire/tui (TUI primitives)
-                              - github.com/krewire/krewire/pkg/* (Core domain & AI)
+                              - github.com/krewire/krewire/* (Core domain & AI)
 ```
 
 ## Subsystem Domains
@@ -58,6 +58,6 @@ internal/commands      internal/dashboard         internal/scaffold       intern
 
 ## Architectural Invariants
 
-1. **Private by Default**: Krew provides developer toolchain binaries and contains no exported public Go SDK packages in `pkg/`. Reusable libraries belong strictly in `krewire/pkg/*`.
+1. **Tooling Isolation**: Krew provides developer toolchain binaries (`cli`, `core`, `conformance`, `version`); reusable domain libraries belong strictly in `krewire/*`.
 2. **Pure Go (`CGO_ENABLED=0`)**: All command implementations, asset bundling, and file operations compile cleanly without native C linkages.
 3. **Downward-Only Dependencies**: Commands import internal domain libraries (`config`, `shape`, `scaffold`, `dashboard`), never the inverse.

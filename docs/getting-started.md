@@ -66,8 +66,8 @@ package migrations
 import (
 	"context"
 
-	"github.com/krewire/krewire/pkg/orm/migrate"
-	"github.com/krewire/krewire/pkg/orm/schema"
+	"github.com/krewire/krewire/orm/migrate"
+	"github.com/krewire/krewire/orm/schema"
 )
 
 func init() {
