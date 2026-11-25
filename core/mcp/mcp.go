@@ -266,8 +266,8 @@ func (s *Server) dispatch(ctx context.Context, method string, paramsRaw json.Raw
 		if err := json.Unmarshal(paramsRaw, &p); err != nil {
 			return nil, &Error{Code: CodeInvalidParams, Message: "invalid tool call parameters"}
 		}
-		resultText, isErr := s.callTool(ctx, p.Name, p.Arguments)
-		return map[string]any{
+		resultText, structured, isErr := s.callTool(ctx, p.Name, p.Arguments)
+		resp := map[string]any{
 			"content": []map[string]any{
 				{
 					"type": "text",
@@ -275,7 +275,11 @@ func (s *Server) dispatch(ctx context.Context, method string, paramsRaw json.Raw
 				},
 			},
 			"isError": isErr,
-		}, nil
+		}
+		if structured != nil {
+			resp["structuredContent"] = structured
+		}
+		return resp, nil
 
 	default:
 		return nil, &Error{Code: CodeMethodNotFound, Message: fmt.Sprintf("method not found: %s", method)}
@@ -311,22 +315,31 @@ func (s *Server) readResource(uri string) (string, error) {
 	}
 }
 
-func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMessage) (string, bool) {
+func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMessage) (string, any, bool) {
 	switch name {
 	case "kiw_inspect_project":
 		info := s.collectInfo()
-		b, _ := json.MarshalIndent(info, "", "  ")
-		return string(b), false
+		b, err := json.MarshalIndent(info, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("failed to serialize project info: %v", err), nil, true
+		}
+		return string(b), info, false
 
 	case "kiw_list_routes":
 		routes := s.collectRoutes()
-		b, _ := json.MarshalIndent(routes, "", "  ")
-		return string(b), false
+		b, err := json.MarshalIndent(routes, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("failed to serialize routes: %v", err), nil, true
+		}
+		return string(b), routes, false
 
 	case "kiw_get_metrics":
 		metrics := s.collectMetrics()
-		b, _ := json.MarshalIndent(metrics, "", "  ")
-		return string(b), false
+		b, err := json.MarshalIndent(metrics, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("failed to serialize metrics: %v", err), nil, true
+		}
+		return string(b), metrics, false
 
 	case "kiw_make_scaffold":
 		var p struct {
@@ -334,12 +347,16 @@ func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMess
 			Name string `json:"name"`
 		}
 		if err := json.Unmarshal(argsRaw, &p); err != nil {
-			return fmt.Sprintf("invalid arguments: %v", err), true
+			return fmt.Sprintf("invalid arguments: %v", err), nil, true
+		}
+		if p.Kind == "" || p.Name == "" {
+			return "missing required kind or name argument", nil, true
 		}
 		if err := scaffold.MakeArtifact(s.root, p.Kind, p.Name); err != nil {
-			return fmt.Sprintf("scaffolding failed: %v", err), true
+			return fmt.Sprintf("scaffolding failed: %v", err), nil, true
 		}
-		return fmt.Sprintf("Successfully scaffolded %s %q in project", p.Kind, p.Name), false
+		msg := fmt.Sprintf("Successfully scaffolded %s %q in project", p.Kind, p.Name)
+		return msg, map[string]any{"success": true, "kind": p.Kind, "name": p.Name}, false
 
 	case "kiw_run_tests":
 		pkg := "./..."
@@ -355,21 +372,24 @@ func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMess
 		cmd := exec.CommandContext(ctx, "go", "test", pkg)
 		cmd.Dir = s.root
 		out, err := cmd.CombinedOutput()
+		outputStr := strings.TrimSpace(string(out))
 		if err != nil {
-			return fmt.Sprintf("Tests failed:\n%s", string(out)), true
+			msg := fmt.Sprintf("Tests failed:\n%s", outputStr)
+			return msg, map[string]any{"passed": false, "pkg": pkg, "output": outputStr}, true
 		}
-		return fmt.Sprintf("Tests passed:\n%s", string(out)), false
+		msg := fmt.Sprintf("Tests passed:\n%s", outputStr)
+		return msg, map[string]any{"passed": true, "pkg": pkg, "output": outputStr}, false
 
 	case "kiw_context":
 		projectCtx, err := kiwcontext.Load(s.root)
 		if err != nil {
-			return fmt.Sprintf("failed to load project context: %v", err), true
+			return fmt.Sprintf("failed to load project context: %v", err), nil, true
 		}
 		b, err := json.MarshalIndent(projectCtx, "", "  ")
 		if err != nil {
-			return fmt.Sprintf("failed to serialize context: %v", err), true
+			return fmt.Sprintf("failed to serialize context: %v", err), nil, true
 		}
-		return string(b), false
+		return string(b), projectCtx, false
 
 	case "kiw_verify":
 		var vp struct {
@@ -387,13 +407,30 @@ func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMess
 			vp.AgentID = "mcp-agent"
 		}
 
+		// Verify project root directory exists and is a valid directory
+		stat, statErr := os.Stat(s.root)
+		if statErr != nil || !stat.IsDir() {
+			return fmt.Sprintf("invalid project root directory %q: %v", s.root, statErr), nil, true
+		}
+
 		gitCommit := "unversioned"
 		workingTreeClean := false
-		if out, err := exec.Command("git", "rev-parse", "HEAD").Output(); err == nil {
+
+		// Execute Git commands strictly within s.root with context
+		revCmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
+		revCmd.Dir = s.root
+		if out, err := revCmd.Output(); err == nil {
 			gitCommit = strings.TrimSpace(string(out))
 		}
-		if out, err := exec.Command("git", "status", "--porcelain").Output(); err == nil {
-			workingTreeClean = len(strings.TrimSpace(string(out))) == 0
+
+		statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+		statusCmd.Dir = s.root
+		statusOut, statusErr := statusCmd.CombinedOutput()
+		if statusErr == nil {
+			workingTreeClean = len(strings.TrimSpace(string(statusOut))) == 0
+		} else {
+			// Do not mistake git failure for clean working tree
+			workingTreeClean = false
 		}
 
 		gateDefs := []struct {
@@ -462,27 +499,43 @@ func (s *Server) callTool(ctx context.Context, name string, argsRaw json.RawMess
 		}
 
 		record := model.NewTaskVerificationRecord(vp.TaskID, vp.AgentID, gitCommit, workingTreeClean, evidences)
+		record.WorkspaceRoot = s.root
+
 		if vp.SaveLedger {
-			ledgerPath := filepath.Join(s.root, ".krewire", "ledger.json")
-			var l *model.VerificationLedger
-			if loaded, err := model.LoadLedgerFile(ledgerPath); err == nil {
-				l = loaded
-			} else {
-				l = model.NewVerificationLedger(vp.TaskID)
+			ledgerDir := filepath.Join(s.root, ".krewire")
+			if err := os.MkdirAll(ledgerDir, 0755); err != nil {
+				return fmt.Sprintf("failed to create ledger directory: %v", err), nil, true
 			}
-			if _, err := l.AppendBlock(gitCommit, evidences); err == nil {
-				_ = l.SaveFile(ledgerPath)
+			ledgerPath := filepath.Join(ledgerDir, "ledger.json")
+			var l *model.VerificationLedger
+			if _, err := os.Stat(ledgerPath); err == nil {
+				loaded, err := model.LoadLedgerFile(ledgerPath)
+				if err != nil {
+					return fmt.Sprintf("failed to load existing verification ledger: %v", err), nil, true
+				}
+				l = loaded
+			} else if os.IsNotExist(err) {
+				l = model.NewVerificationLedger(vp.TaskID)
+			} else {
+				return fmt.Sprintf("failed to access ledger path: %v", err), nil, true
+			}
+
+			if _, err := l.AppendBlock(gitCommit, evidences); err != nil {
+				return fmt.Sprintf("failed to append verification block to ledger: %v", err), nil, true
+			}
+			if err := l.SaveFile(ledgerPath); err != nil {
+				return fmt.Sprintf("failed to persist verification ledger: %v", err), nil, true
 			}
 		}
 
 		b, err := json.MarshalIndent(record, "", "  ")
 		if err != nil {
-			return fmt.Sprintf("failed to serialize record: %v", err), true
+			return fmt.Sprintf("failed to serialize record: %v", err), nil, true
 		}
-		return string(b), !record.OverallVerified
+		return string(b), record, !record.OverallVerified
 
 	default:
-		return fmt.Sprintf("unknown tool %q", name), true
+		return fmt.Sprintf("unknown tool %q", name), nil, true
 	}
 }
 

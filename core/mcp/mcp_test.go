@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	kiwconfig "github.com/krewire/krew/core/config"
+	"github.com/krewire/krewire/model"
 )
 
 func setupTestServer(t *testing.T) (*Server, string) {
@@ -262,5 +264,159 @@ func TestHTTPTransport(t *testing.T) {
 	}
 	if jsonResp.ID != "http-1" {
 		t.Errorf("expected id 'http-1', got %v", jsonResp.ID)
+	}
+}
+
+func TestKiwVerify_WorkspaceScopedGitAndLedger(t *testing.T) {
+	srv, rootDir := setupTestServer(t)
+
+	// Initialize git repository in rootDir
+	initCmd := exec.Command("git", "init")
+	initCmd.Dir = rootDir
+	if err := initCmd.Run(); err != nil {
+		t.Skipf("git not available or init failed: %v", err)
+	}
+	exec.Command("git", "-C", rootDir, "config", "user.email", "test@krewire.dev").Run()
+	exec.Command("git", "-C", rootDir, "config", "user.name", "Krewire Test").Run()
+	exec.Command("git", "-C", rootDir, "add", ".").Run()
+	commitCmd := exec.Command("git", "-C", rootDir, "commit", "-m", "initial commit")
+	if err := commitCmd.Run(); err != nil {
+		t.Skipf("git commit failed: %v", err)
+	}
+
+	revCmd := exec.Command("git", "-C", rootDir, "rev-parse", "HEAD")
+	expectedCommitBytes, _ := revCmd.Output()
+	expectedCommit := strings.TrimSpace(string(expectedCommitBytes))
+
+	ctx := context.Background()
+	callParams, _ := json.Marshal(map[string]any{
+		"name": "kiw_verify",
+		"arguments": map[string]any{
+			"task_id":     "scoped-task-1",
+			"agent_id":    "test-agent",
+			"save_ledger": true,
+		},
+	})
+	res := srv.HandleRequest(ctx, Request{JSONRPC: "2.0", ID: 100, Method: "tools/call", Params: callParams})
+	if res == nil || res.Error != nil {
+		t.Fatalf("kiw_verify call failed: %+v", res)
+	}
+
+	resultMap, ok := res.Result.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any result, got %T", res.Result)
+	}
+
+	// Verify structuredContent exists
+	structured, ok := resultMap["structuredContent"].(model.TaskVerificationRecord)
+	if !ok {
+		t.Fatalf("expected model.TaskVerificationRecord in structuredContent, got %T", resultMap["structuredContent"])
+	}
+
+	if structured.GitCommit != expectedCommit {
+		t.Errorf("expected git_commit %q, got %q", expectedCommit, structured.GitCommit)
+	}
+	if structured.WorkspaceRoot != rootDir {
+		t.Errorf("expected workspace_root %q, got %q", rootDir, structured.WorkspaceRoot)
+	}
+
+	// Verify ledger.json was saved on disk
+	ledgerPath := filepath.Join(rootDir, ".krewire", "ledger.json")
+	if _, err := os.Stat(ledgerPath); err != nil {
+		t.Fatalf("expected ledger.json to exist at %s: %v", ledgerPath, err)
+	}
+}
+
+func TestKiwVerify_TwoSeparateGitReposWorkspaceIsolation(t *testing.T) {
+	// Repo A: simulated CWD / host repo
+	cwdDir := t.TempDir()
+	initCmdA := exec.Command("git", "init")
+	initCmdA.Dir = cwdDir
+	if err := initCmdA.Run(); err != nil {
+		t.Skipf("git init failed: %v", err)
+	}
+	exec.Command("git", "-C", cwdDir, "config", "user.email", "cwd@krewire.dev").Run()
+	exec.Command("git", "-C", cwdDir, "config", "user.name", "CWD Agent").Run()
+	_ = os.WriteFile(filepath.Join(cwdDir, "fileA.txt"), []byte("repo A"), 0644)
+	exec.Command("git", "-C", cwdDir, "add", ".").Run()
+	exec.Command("git", "-C", cwdDir, "commit", "-m", "commit A").Run()
+	commitABytes, _ := exec.Command("git", "-C", cwdDir, "rev-parse", "HEAD").Output()
+	commitA := strings.TrimSpace(string(commitABytes))
+
+	// Repo B: project root target
+	srv, rootB := setupTestServer(t)
+	initCmdB := exec.Command("git", "init")
+	initCmdB.Dir = rootB
+	if err := initCmdB.Run(); err != nil {
+		t.Skipf("git init failed: %v", err)
+	}
+	exec.Command("git", "-C", rootB, "config", "user.email", "b@krewire.dev").Run()
+	exec.Command("git", "-C", rootB, "config", "user.name", "B Agent").Run()
+	_ = os.WriteFile(filepath.Join(rootB, "fileB.txt"), []byte("repo B"), 0644)
+	exec.Command("git", "-C", rootB, "add", ".").Run()
+	exec.Command("git", "-C", rootB, "commit", "-m", "commit B").Run()
+	commitBBytes, _ := exec.Command("git", "-C", rootB, "rev-parse", "HEAD").Output()
+	commitB := strings.TrimSpace(string(commitBBytes))
+
+	if commitA == commitB {
+		t.Fatal("expected commitA and commitB to be different hashes")
+	}
+
+	// Change working directory to cwdDir
+	oldWd, _ := os.Getwd()
+	_ = os.Chdir(cwdDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	ctx := context.Background()
+	callParams, _ := json.Marshal(map[string]any{
+		"name": "kiw_verify",
+		"arguments": map[string]any{
+			"task_id": "isolation-task",
+		},
+	})
+	res := srv.HandleRequest(ctx, Request{JSONRPC: "2.0", ID: 101, Method: "tools/call", Params: callParams})
+	if res == nil || res.Error != nil {
+		t.Fatalf("kiw_verify failed: %+v", res)
+	}
+
+	resultMap := res.Result.(map[string]any)
+	structured := resultMap["structuredContent"].(model.TaskVerificationRecord)
+
+	// Verify evidence matches repo B (s.root), NEVER cwdDir
+	if structured.GitCommit != commitB {
+		t.Errorf("expected git_commit to be repo B (%s), but got %s (repo A was %s)", commitB, structured.GitCommit, commitA)
+	}
+	if structured.WorkspaceRoot != rootB {
+		t.Errorf("expected workspace_root %s, got %s", rootB, structured.WorkspaceRoot)
+	}
+}
+
+func TestKiwVerify_LedgerCorruptErrorVisibility(t *testing.T) {
+	srv, rootDir := setupTestServer(t)
+
+	// Create corrupt ledger.json in .krewire
+	ledgerDir := filepath.Join(rootDir, ".krewire")
+	_ = os.MkdirAll(ledgerDir, 0755)
+	corruptPath := filepath.Join(ledgerDir, "ledger.json")
+	if err := os.WriteFile(corruptPath, []byte("NOT_A_VALID_LEDGER_JSON"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	callParams, _ := json.Marshal(map[string]any{
+		"name": "kiw_verify",
+		"arguments": map[string]any{
+			"task_id":     "corrupt-task",
+			"save_ledger": true,
+		},
+	})
+	res := srv.HandleRequest(ctx, Request{JSONRPC: "2.0", ID: 102, Method: "tools/call", Params: callParams})
+	if res == nil || res.Error != nil {
+		t.Fatalf("request failed: %+v", res)
+	}
+
+	resultMap := res.Result.(map[string]any)
+	if resultMap["isError"] != true {
+		t.Fatalf("expected isError=true for corrupt ledger, got %v", resultMap["isError"])
 	}
 }
