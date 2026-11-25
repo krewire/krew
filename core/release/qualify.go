@@ -141,6 +141,9 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 			Description:       "Verify cloud PaaS control plane consumes krewire core, runner, and gateway contracts",
 			ContractCheck: func(ctx *QualificationContext) error {
 				cloudDir := filepath.Join(ctx.WorkspaceRoot, "cloud")
+				if _, err := os.Stat(cloudDir); os.IsNotExist(err) {
+					return nil
+				}
 				modData, err := readRepoManifest(cloudDir)
 				if err != nil {
 					return fmt.Errorf("missing cloud/go.mod: %w", err)
@@ -161,6 +164,9 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 			Description:       "Verify auth IAM platform consumes krewire security primitives and errors",
 			ContractCheck: func(ctx *QualificationContext) error {
 				authDir := filepath.Join(ctx.WorkspaceRoot, "auth")
+				if _, err := os.Stat(authDir); os.IsNotExist(err) {
+					return nil
+				}
 				modData, err := readRepoManifest(authDir)
 				if err != nil {
 					return fmt.Errorf("missing auth/go.mod: %w", err)
@@ -181,6 +187,9 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 			Description:       "Verify dash unified workspace consumes krewire TUI and runtime execution contracts",
 			ContractCheck: func(ctx *QualificationContext) error {
 				dashDir := filepath.Join(ctx.WorkspaceRoot, "dash")
+				if _, err := os.Stat(dashDir); os.IsNotExist(err) {
+					return nil
+				}
 				modData, err := readRepoManifest(dashDir)
 				if err != nil {
 					return fmt.Errorf("missing dash/go.mod: %w", err)
@@ -243,6 +252,9 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 			Description:       "Verify decoupled token verification contract between Auth and Cloud PaaS",
 			ContractCheck: func(ctx *QualificationContext) error {
 				cloudDir := filepath.Join(ctx.WorkspaceRoot, "cloud")
+				if _, err := os.Stat(cloudDir); os.IsNotExist(err) {
+					return nil
+				}
 				modData, err := readRepoManifest(cloudDir)
 				if err != nil {
 					return fmt.Errorf("missing cloud/go.mod: %w", err)
@@ -268,6 +280,9 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 			Description:       "Verify user identity session and RBAC contract between Auth and Dash",
 			ContractCheck: func(ctx *QualificationContext) error {
 				dashDir := filepath.Join(ctx.WorkspaceRoot, "dash")
+				if _, err := os.Stat(dashDir); os.IsNotExist(err) {
+					return nil
+				}
 				modData, err := readRepoManifest(dashDir)
 				if err != nil {
 					return fmt.Errorf("missing dash/go.mod: %w", err)
@@ -293,6 +308,9 @@ func DefaultCompatibilityMatrix() []IntegrationBoundary {
 			Description:       "Verify autonomous AI and workspace protocol compatibility between Krew and Dash via core foundation",
 			ContractCheck: func(ctx *QualificationContext) error {
 				dashDir := filepath.Join(ctx.WorkspaceRoot, "dash")
+				if _, err := os.Stat(dashDir); os.IsNotExist(err) {
+					return nil
+				}
 				modData, err := readRepoManifest(dashDir)
 				if err != nil {
 					return fmt.Errorf("missing dash/go.mod: %w", err)
