@@ -70,11 +70,12 @@ func FindWorkspaceRoot() (string, error) {
 		return "", err
 	}
 	for {
-		// The ecosystem workspace root contains the foundational krewire repo and AGENTS.md
-		if _, err := os.Stat(filepath.Join(dir, "AGENTS.md")); err == nil {
-			if _, err := os.Stat(filepath.Join(dir, "krewire")); err == nil {
-				return dir, nil
-			}
+		// The ecosystem workspace root contains the foundational krewire repo
+		if _, err := os.Stat(filepath.Join(dir, "krewire", "go.work")); err == nil {
+			return dir, nil
+		}
+		if _, err := os.Stat(filepath.Join(dir, "krewire", "version")); err == nil {
+			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
