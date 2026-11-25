@@ -152,10 +152,6 @@ func childEnviron(base []string, addr string, env env.Env, debug bool) []string 
 	e := append([]string(nil), base...)
 	if addr != "" {
 		e = append(e, "APP_ADDR="+addr)
-		parts := strings.Split(addr, ":")
-		if len(parts) > 1 && parts[len(parts)-1] != "" {
-			e = append(e, "PORT="+parts[len(parts)-1])
-		}
 	}
 	return append(e, "KIW_ENV="+env.String(), "KIW_DEBUG="+truthStr(debug))
 }
