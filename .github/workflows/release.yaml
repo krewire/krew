@@ -114,20 +114,18 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.27.x"
-          cache: true
+          go-version: "1.27.3"
+          cache: false
 
-      - name: Checkout Dependencies
+      - name: Provision First-Party Dependencies
         run: |
-          if grep -q "replace.*../krewire" go.mod && [ ! -d "../krewire" ]; then
-            git clone --depth 1 https://github.com/krewire/krewire.git ../krewire
-          fi
-          if grep -q "replace.*../tui" go.mod && [ ! -d "../tui" ]; then
-            git clone --depth 1 https://github.com/krewire/tui.git ../tui
-          fi
-          if grep -q "replace.*../ui" go.mod && [ ! -d "../ui" ]; then
-            git clone --depth 1 https://github.com/krewire/ui.git ../ui
-          fi
+          mkdir -p ..
+          for repo in krewire hub tui ui; do
+            if [ ! -d "../${repo}" ]; then
+              echo "Cloning krewire/${repo}..."
+              git clone --depth 1 "https://github.com/krewire/${repo}.git" "../${repo}"
+            fi
+          done
 
       - name: Formatting Check
         run: |
@@ -137,17 +135,21 @@ jobs:
             exit 1
           fi
 
-      - name: Module Tidy & Verification
-        run: go mod tidy
+      - name: Module Manifest Verification
+        run: |
+          for mod in cli conformance core version; do
+            echo "▶ Verifying module manifests in ${mod}..."
+            (cd "${mod}" && go mod verify)
+          done
 
       - name: Static Analysis
-        run: go vet ./...
+        run: go vet ./cli/... ./conformance/... ./core/... ./version/...
 
-      - name: Unit Tests
-        run: go test -v ./...
+      - name: Unit & Conformance Tests
+        run: go test -v ./cli/... ./conformance/... ./core/... ./version/...
 
       - name: Pure-Go Compilation Invariant
-        run: CGO_ENABLED=0 go build ./...
+        run: CGO_ENABLED=0 go build ./cli/... ./conformance/... ./core/... ./version/...
 
   build-binaries:
     name: Cross-Compile krew Agent CLI
@@ -160,27 +162,25 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.27.x"
-          cache: true
+          go-version: "1.27.3"
+          cache: false
 
-      - name: Checkout Dependencies
+      - name: Provision First-Party Dependencies
         run: |
-          if grep -q "replace.*../krewire" go.mod && [ ! -d "../krewire" ]; then
-            git clone --depth 1 https://github.com/krewire/krewire.git ../krewire
-          fi
-          if grep -q "replace.*../tui" go.mod && [ ! -d "../tui" ]; then
-            git clone --depth 1 https://github.com/krewire/tui.git ../tui
-          fi
-          if grep -q "replace.*../ui" go.mod && [ ! -d "../ui" ]; then
-            git clone --depth 1 https://github.com/krewire/ui.git ../ui
-          fi
+          mkdir -p ..
+          for repo in krewire hub tui ui; do
+            if [ ! -d "../${repo}" ]; then
+              echo "Cloning krewire/${repo}..."
+              git clone --depth 1 "https://github.com/krewire/${repo}.git" "../${repo}"
+            fi
+          done
 
       - name: Compile Multi-Platform Binaries
         env:
           VER: ${{ needs.classify.outputs.version }}
         run: |
           mkdir -p dist
-          LDFLAGS="-s -w -X 'github.com/krewire/krew.VersionString=${VER}'"
+          LDFLAGS="-s -w -X 'github.com/krewire/krew/core/version.rawVersion=${VER}' -X 'github.com/krewire/krew/version.rawVersion=${VER}'"
           
           PLATFORMS=(
             "linux/amd64/krew-linux-amd64"
@@ -193,7 +193,7 @@ jobs:
           for target in "${PLATFORMS[@]}"; do
             IFS="/" read -r OS ARCH OUT <<< "$target"
             echo "▶ Compiling ${OUT} (${OS}/${ARCH})..."
-            GOOS=$OS GOARCH=$ARCH CGO_ENABLED=0 go build -ldflags="$LDFLAGS" -o "dist/${OUT}" ./cmd/krew
+            GOOS=$OS GOARCH=$ARCH CGO_ENABLED=0 go build -trimpath -ldflags="$LDFLAGS" -o "dist/${OUT}" ./cli
           done
 
       - name: Checksums
@@ -232,7 +232,7 @@ jobs:
             ## Krew Developer Toolchain — ${{ needs.classify.outputs.version }}
             
             **Track**: `${{ needs.classify.outputs.track }}`
-            **Architecture Tier**: Layer 4 Platform Engine
+            **Architecture Tier**: Layer 3 Universal Developer Driver & CLI
             
             ### Binary Checksums (CGO_ENABLED=0 Pure Go)
             ```

@@ -4,6 +4,8 @@ import (
 	"github.com/krewire/krewire/version"
 )
 
+var rawVersion = ""
+
 // Version is the semantic release version of the Krew AI Agent engine.
 var Version = version.MustParseVersion("0.2.0")
 
@@ -15,5 +17,8 @@ var EcosystemRequires = map[string]version.Version{
 
 // VersionString returns the formatted version identifier.
 func VersionString() string {
+	if rawVersion != "" {
+		return rawVersion
+	}
 	return Version.String()
 }

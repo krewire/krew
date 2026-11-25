@@ -1,0 +1,79 @@
+name: CI Pipeline
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Krew AI Agent Continuous Integration Pipeline
+# Validates all four Krew modules (cli, conformance, core, version)
+# Triggered on pull requests and pushes to main
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-krew-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Quality Gate & Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+          cache: false
+
+      - name: Provision First-Party Dependencies
+        run: |
+          mkdir -p ..
+          for repo in krewire hub tui ui; do
+            if [ ! -d "../${repo}" ]; then
+              echo "Cloning krewire/${repo}..."
+              git clone --depth 1 "https://github.com/krewire/${repo}.git" "../${repo}"
+            fi
+          done
+
+      - name: Formatting Check
+        run: |
+          UNFORMATTED="$(gofmt -l .)"
+          if [ -n "$UNFORMATTED" ]; then
+            echo "gofmt unformatted files: $UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Module Manifest Verification
+        run: |
+          for mod in cli conformance core version; do
+            echo "▶ Verifying module manifests in ${mod}..."
+            (cd "${mod}" && go mod verify)
+          done
+
+      - name: Static Analysis
+        run: go vet ./cli/... ./conformance/... ./core/... ./version/...
+
+      - name: Unit & Conformance Tests
+        run: go test -v ./cli/... ./conformance/... ./core/... ./version/...
+
+      - name: Pure-Go Compilation Invariant
+        run: CGO_ENABLED=0 go build ./cli/... ./conformance/... ./core/... ./version/...
+
+      - name: Cross-Compilation Smoke Test
+        run: |
+          mkdir -p dist
+          for target in "linux/amd64/krew-linux-amd64" "darwin/arm64/krew-darwin-arm64" "windows/amd64/krew-windows-amd64.exe"; do
+            IFS="/" read -r OS ARCH OUT <<< "$target"
+            echo "▶ Smoke building ${OUT} (${OS}/${ARCH})..."
+            GOOS=$OS GOARCH=$ARCH CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "dist/${OUT}" ./cli
+          done
+          ls -la dist/

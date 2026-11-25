@@ -23,11 +23,11 @@ type Manifest struct {
 
 // Modules lists the ecosystem modules in dependency order (dependencies first).
 var Modules = []Manifest{
-	{Name: "krewire", Dir: "krewire", VersionFile: "version.go", Tier: model.TierFree},
-	{Name: "krew", Dir: "krew", VersionFile: "version.go", Tier: model.TierEnterprise},
-	{Name: "auth", Dir: "auth", VersionFile: "version.go", Tier: model.TierFree},
-	{Name: "cloud", Dir: "cloud", VersionFile: "version.go", Tier: model.TierFree},
-	{Name: "dash", Dir: "dash", VersionFile: "version.go", Tier: model.TierFree},
+	{Name: "krewire", Dir: "krewire", VersionFile: "version/version.go", Tier: model.TierFree},
+	{Name: "krew", Dir: "krew", VersionFile: "version/version.go", Tier: model.TierEnterprise},
+	{Name: "auth", Dir: "auth", VersionFile: "version/version.go", Tier: model.TierFree},
+	{Name: "cloud", Dir: "cloud", VersionFile: "version/version.go", Tier: model.TierFree},
+	{Name: "dash", Dir: "dash", VersionFile: "version/version.go", Tier: model.TierFree},
 }
 
 // dependents maps each module to the modules that require it.
@@ -59,8 +59,8 @@ var DefaultRequirements = map[string]map[string]version.Version{
 }
 
 var (
-	versionDeclRe = regexp.MustCompile(`var\s+Version\s*=\s*version\.MustParseVersion\("([^"]+)"\)`)
-	reqItemRe     = regexp.MustCompile(`"([a-zA-Z0-9_-]+)"\s*:\s*version\.MustParseVersion\("([^"]+)"\)`)
+	versionDeclRe = regexp.MustCompile(`var\s+(?:Current)?Version\s*=\s*(?:version\.)?MustParseVersion\("([^"]+)"\)`)
+	reqItemRe     = regexp.MustCompile(`"([a-zA-Z0-9_-]+)"\s*:\s*(?:version\.)?MustParseVersion\("([^"]+)"\)`)
 )
 
 // FindWorkspaceRoot walks up from working directory or executable location to locate the ecosystem workspace root.
@@ -71,8 +71,10 @@ func FindWorkspaceRoot() (string, error) {
 	}
 	for {
 		// The ecosystem workspace root contains the foundational krewire repo and AGENTS.md
-		if _, err := os.Stat(filepath.Join(dir, "krewire", "pkg")); err == nil {
-			return dir, nil
+		if _, err := os.Stat(filepath.Join(dir, "AGENTS.md")); err == nil {
+			if _, err := os.Stat(filepath.Join(dir, "krewire")); err == nil {
+				return dir, nil
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -91,7 +93,9 @@ func resolveModuleVersionPath(root, module string) (string, error) {
 	}
 	candidates := []string{
 		filepath.Join(root, m.Dir, m.VersionFile),
+		filepath.Join(root, m.Dir, "version", "version.go"),
 		filepath.Join(root, m.Name, m.VersionFile),
+		filepath.Join(root, m.Name, "version", "version.go"),
 		filepath.Join(root, m.VersionFile),
 	}
 	for _, c := range candidates {
