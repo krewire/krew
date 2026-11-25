@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/krewire/krewire/ai/boost"
+	"github.com/krewire/agent/core/boost"
 	"github.com/krewire/krewire/errs"
 )
 

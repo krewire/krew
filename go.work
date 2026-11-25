@@ -5,6 +5,9 @@ use (
 	./conformance
 	./core
 	./version
+	../agent/conformance
+	../agent/core
+	../agent/version
 	../hub/mysql
 	../hub/plugin
 	../hub/postgres
@@ -14,7 +17,6 @@ use (
 	../hub/svelte
 	../hub/tailwind
 	../hub/vue
-	../krewire/ai
 	../krewire/apicontract
 	../krewire/app
 	../krewire/assets
@@ -22,7 +24,6 @@ use (
 	../krewire/book
 	../krewire/cache
 	../krewire/cloud
-	../krewire/cmd/ai
 	../krewire/collab
 	../krewire/commerce
 	../krewire/config

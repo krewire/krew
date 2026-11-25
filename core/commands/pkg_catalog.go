@@ -175,10 +175,10 @@ func CanonicalPackageCatalog() []model.PackageMetadata {
 			BreakingChangePolicy: "Beta: VDOM diffing API stabilizing towards v1.0.",
 		},
 		{
-			Name:                 "ai",
-			ImportPath:           "github.com/krewire/krewire/ai",
+			Name:                 "agent",
+			ImportPath:           "github.com/krewire/agent/core",
 			Layer:                2,
-			Purpose:              "Native Go AI SDK: provider streaming, function calling, and structured JSON schemas",
+			Purpose:              "Autonomous AI Agent SDK: provider streaming, function calling, memory, and governance",
 			License:              "MIT",
 			Stability:            model.StabilityBeta,
 			MinGoVersion:         "1.22+",

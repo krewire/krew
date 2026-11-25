@@ -112,7 +112,7 @@ func runApp(rt *runtimeEnv, fs *flag.FlagSet) errs.ExitCode {
 	defer os.RemoveAll(dir)
 
 	bin := filepath.Join(dir, "app")
-	addr := resolvedAddr(flagValue(fs, "addr"), rt.cfg)
+	addr := resolveAddrWithPort(flagValue(fs, "addr"), flagValue(fs, "port"), rt.cfg)
 
 	entry := resolveEntry(rt.root)
 	slog.Info("building app", "bin", bin, "entry", entry)

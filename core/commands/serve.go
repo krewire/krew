@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -71,6 +72,9 @@ func listenAndServe(addr string, h http.Handler) error {
 func RegisterServe(fs *flag.FlagSet) {
 	fs.String("input", "", "content directory (default content)")
 	fs.String("addr", "", "listen address (default :8080)")
+	fs.String("port", "", "listen port (e.g. 8080 or :8080)")
+	fs.String("output", "", "output directory (default .krewire/build)")
+	fs.String("o", "", "output directory (shorthand for --output)")
 	registerRuntimeFlags(fs)
 }
 
@@ -111,7 +115,7 @@ func serveBook(root string, fs *flag.FlagSet) errs.ExitCode {
 		return fail(err)
 	}
 	input := joinRoot(root, flagValue(fs, "input"), firstNonEmpty(cfg.Input, config.DefaultInput))
-	addr := resolvedAddr(flagValue(fs, "addr"), cfg)
+	addr := resolveAddrWithPort(flagValue(fs, "addr"), flagValue(fs, "port"), cfg)
 	b, err := book.LoadWithRules(
 		input, "", "", "/",
 		globList(fs, "include", cfg.Build.Include),
@@ -121,6 +125,13 @@ func serveBook(root string, fs *flag.FlagSet) errs.ExitCode {
 		return fail(err)
 	}
 	slog.Info("serving book", "addr", addr)
+	displayAddr := addr
+	if strings.HasPrefix(displayAddr, ":") {
+		displayAddr = "http://localhost" + displayAddr
+	} else if !strings.HasPrefix(displayAddr, "http://") && !strings.HasPrefix(displayAddr, "https://") {
+		displayAddr = "http://" + displayAddr
+	}
+	fmt.Fprintf(os.Stdout, "krew serve: previewing book at %s\n", displayAddr)
 	if err := book.Serve(b, addr); err != nil {
 		return fail(err)
 	}
@@ -149,8 +160,15 @@ func serveStaticBuild(root string, fs *flag.FlagSet) errs.ExitCode {
 			return errs.ExitCodeUsage
 		}
 	}
-	addr := resolvedAddr(flagValue(fs, "addr"), cfg)
+	addr := resolveAddrWithPort(flagValue(fs, "addr"), flagValue(fs, "port"), cfg)
 	slog.Info("serving static build", "dir", outDir, "addr", addr)
+	displayAddr := addr
+	if strings.HasPrefix(displayAddr, ":") {
+		displayAddr = "http://localhost" + displayAddr
+	} else if !strings.HasPrefix(displayAddr, "http://") && !strings.HasPrefix(displayAddr, "https://") {
+		displayAddr = "http://" + displayAddr
+	}
+	fmt.Fprintf(os.Stdout, "krew serve: previewing production build from %s at %s\n", outDir, displayAddr)
 	roots := []string{outDir}
 	for _, o := range cfg.Build.Outputs {
 		p := joinRoot(root, o, o)
@@ -200,8 +218,15 @@ func extensionlessFS(root string) http.Handler {
 // serveSSG previews the project's declarative ssg site from krewire.yaml.
 func serveSSG(fs *flag.FlagSet, cfg *config.Config) errs.ExitCode {
 	ssgCfg := cfg.ToSSGConfig()
-	addr := resolvedAddr(flagValue(fs, "addr"), cfg)
+	addr := resolveAddrWithPort(flagValue(fs, "addr"), flagValue(fs, "port"), cfg)
 	slog.Info("serving site", "addr", addr)
+	displayAddr := addr
+	if strings.HasPrefix(displayAddr, ":") {
+		displayAddr = "http://localhost" + displayAddr
+	} else if !strings.HasPrefix(displayAddr, "http://") && !strings.HasPrefix(displayAddr, "https://") {
+		displayAddr = "http://" + displayAddr
+	}
+	fmt.Fprintf(os.Stdout, "krew serve: previewing site at %s\n", displayAddr)
 	site, err := ssgCfg.Site()
 	if err != nil {
 		return fail(err)

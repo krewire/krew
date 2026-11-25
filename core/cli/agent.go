@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	aicli "github.com/krewire/krewire/ai/cli"
+	aicli "github.com/krewire/agent/core/cli"
 	"github.com/krewire/krewire/errs"
 )
 

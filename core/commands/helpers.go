@@ -116,17 +116,33 @@ func truthStr(b bool) string {
 // defaultAddr is the fallback listen address when no address is specified.
 const defaultAddr = ":8080"
 
-// resolvedAddr resolves the listening address, preferring an explicit command-line
-// flag over a declared port in krewire.yaml, falling back to defaultAddr (:8080)
+// resolveAddrWithPort resolves the listening address, preferring an explicit command-line
+// flag (addr or port) over a declared port in krewire.yaml, falling back to defaultAddr (:8080)
 // (FRK-CONF-031).
-func resolvedAddr(flagAddr string, cfg *config.Config) string {
+func resolveAddrWithPort(flagAddr, flagPort string, cfg *config.Config) string {
 	if flagAddr != "" {
+		if !strings.Contains(flagAddr, ":") {
+			return ":" + flagAddr
+		}
 		return flagAddr
+	}
+	if flagPort != "" {
+		if strings.HasPrefix(flagPort, ":") {
+			return flagPort
+		}
+		return ":" + flagPort
 	}
 	if cfg != nil && cfg.DeclaredPort() > 0 {
 		return fmt.Sprintf(":%d", cfg.DeclaredPort())
 	}
 	return defaultAddr
+}
+
+// resolvedAddr resolves the listening address, preferring an explicit command-line
+// flag over a declared port in krewire.yaml, falling back to defaultAddr (:8080)
+// (FRK-CONF-031).
+func resolvedAddr(flagAddr string, cfg *config.Config) string {
+	return resolveAddrWithPort(flagAddr, "", cfg)
 }
 
 // childEnviron composes the child-process environment for run and dev,
@@ -136,6 +152,10 @@ func childEnviron(base []string, addr string, env env.Env, debug bool) []string 
 	e := append([]string(nil), base...)
 	if addr != "" {
 		e = append(e, "APP_ADDR="+addr)
+		parts := strings.Split(addr, ":")
+		if len(parts) > 1 && parts[len(parts)-1] != "" {
+			e = append(e, "PORT="+parts[len(parts)-1])
+		}
 	}
 	return append(e, "KIW_ENV="+env.String(), "KIW_DEBUG="+truthStr(debug))
 }
