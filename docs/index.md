@@ -6,7 +6,16 @@ Welcome to the **Krew** repository documentation. This repository (`github.com/k
 
 - [Architecture & Design](architecture.md): CLI composition root (`cmd/krew`), internal dashboard subsystem (`internal/dashboard`), command execution domains, and private-by-default modularity.
 - [Getting Started](getting-started.md): Installation, local setup, building the `krew` CLI, project scaffolding, database migrations, and developer authentication.
+- [Module Reference](modules/index.md): Technical reference for all 4 Go modules in `github.com/krewire/krew`.
 - [Contributing Guide](../CONTRIBUTING.md): Contribution guidelines, testing requirements, quality gates, and code standards.
+
+## Module Reference
+
+- [Modules Overview](modules/index.md): Architecture, layering invariants, and module catalog.
+- [`cli`](modules/cli.md) (`github.com/krewire/krew/cli`): Minimal `main` composition root for the `krew` binary.
+- [`core`](modules/core.md) (`github.com/krewire/krew/core`): 15 toolchain subpackages (`cli`, `commands`, `config`, `shape`, `context`, `scaffold`, `kui`, `dashboard`, `mcp`, `bench`, `buildinfo`, `release`, `gomod`, `ecosystem`, `version`).
+- [`conformance`](modules/conformance.md) (`github.com/krewire/krew/conformance`): Pure-Go, cross-compilation, and bitwise build reproducibility tests.
+- [`version`](modules/version.md) (`github.com/krewire/krew/version`): Semantic release version and `EcosystemRequires` compatibility map.
 
 ## Core Capabilities
 
